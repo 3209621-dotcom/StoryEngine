@@ -1,4 +1,24 @@
-# StoryEngine-NG
+<div align="center">
+
+<img src=".github/assets/hero.svg" alt="StoryEngine — 聊天驱动写长篇小说" width="760" />
+
+<p>
+  <a href="https://github.com/3209621-dotcom/StoryEngine/actions/workflows/ci.yml"><img src="https://github.com/3209621-dotcom/StoryEngine/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/license-AGPL--3.0-8b5cf6" alt="License: AGPL-3.0" />
+  <img src="https://img.shields.io/badge/node-%E2%89%A5%2020-43853d?logo=node.js&logoColor=white" alt="Node >= 20" />
+  <img src="https://img.shields.io/badge/pnpm-11-f69220?logo=pnpm&logoColor=white" alt="pnpm 11" />
+  <img src="https://img.shields.io/badge/%E6%95%B0%E6%8D%AE-100%25%20%E6%9C%AC%E5%9C%B0-f59e0b" alt="数据 100% 本地" />
+</p>
+
+<p>
+  <a href="README.md"><b>简体中文</b></a> ·
+  <a href="README.en.md">English</a> ·
+  <a href="README.ja.md">日本語</a>
+</p>
+
+</div>
+
+---
 
 > 🚧 **持续更新中**：项目仍在快速迭代，功能会不断完善。使用中遇到任何问题、或想要新功能，欢迎到 [Issues](https://github.com/3209621-dotcom/StoryEngine/issues) 提过来，我们会认真看。
 

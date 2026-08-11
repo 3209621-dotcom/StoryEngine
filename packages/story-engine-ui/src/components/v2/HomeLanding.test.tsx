@@ -25,8 +25,8 @@ describe("HomeLanding", () => {
   it("renders the StoryEngine brand as non-interactive text instead of a fake button", () => {
     render(<HomeLanding {...homeProps()} />);
 
-    expect(screen.getByLabelText("StoryEngine-NG 品牌")).toHaveTextContent("StoryEngine-NG");
-    expect(screen.queryByRole("button", { name: /StoryEngine-NG/u })).toBeNull();
+    expect(screen.getByLabelText("StoryEngine 品牌")).toHaveTextContent("StoryEngine");
+    expect(screen.queryByRole("button", { name: /StoryEngine/u })).toBeNull();
   });
 
   it("删除弹窗 Esc 关闭（Radix 暗金弹窗收口）", () => {

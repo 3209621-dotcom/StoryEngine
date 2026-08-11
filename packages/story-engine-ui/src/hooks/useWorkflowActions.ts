@@ -646,7 +646,7 @@ export function useWorkflowActions(params: UseWorkflowActionsParams) {
     const ws = useWorkspaceStore.getState();
 
     if (!projectPath) {
-      ws.setSteeringError("请先从首页打开一个真实 StoryEngine-NG 项目。");
+      ws.setSteeringError("请先从首页打开一个真实 StoryEngine 项目。");
       return;
     }
     if (!direction) {

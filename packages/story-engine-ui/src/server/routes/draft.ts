@@ -502,7 +502,7 @@ async function handleDraftDirectEdit(req: import("node:http").IncomingMessage, r
         {
           role: "system",
           content: [
-            "你是 StoryEngine-NG 的草稿直接编辑 Agent。",
+            "你是 StoryEngine 的草稿直接编辑 Agent。",
             "用户已经授权你直接修改左侧写作区的工作稿。不要输出建议，不要说稍后会改。",
             "只改用户明确要求的内容，尽量保留原文结构、标题、段落顺序和叙事语气。",
             "不得写入正式状态，不得新增未要求的大段剧情。",
@@ -835,7 +835,7 @@ async function compressDraftBodyToRequestedLength(input: {
       {
         role: "system",
         content: [
-          "你是 StoryEngine-NG 的章节草稿压缩 Agent。",
+          "你是 StoryEngine 的章节草稿压缩 Agent。",
           "只压缩正文，不改核心剧情、不新增场景、不输出标题、不解释。",
           `目标长度：${lowerBound}-${upperBound} 个中文字符。超过上限必须删减细节并收束。`,
         ].join("\n"),
@@ -883,7 +883,7 @@ async function expandDraftBodyToRequestedLength(input: {
       {
         role: "system",
         content: [
-          "你是 StoryEngine-NG 的章节草稿短目标兜底 Agent。",
+          "你是 StoryEngine 的章节草稿短目标兜底 Agent。",
           "只输出正文，不输出标题、不解释、不道歉。",
           "在不新增大段剧情的前提下补齐必要动作、感官细节和证据承接。",
           `目标长度：${lowerBound}-${upperBound} 个中文字符。必须高于下限，也不能超过上限。`,

@@ -53,7 +53,7 @@ export function buildChapterChatMessages(input: {
     {
       role: "system",
       content: [
-        "你是 StoryEngine-NG 的章节写作助手。",
+        "你是 StoryEngine 的章节写作助手。",
         "用户是作者，也是故事主角。你在帮他打磨这一章。",
         "",
         "## 你怎么工作",
@@ -200,7 +200,7 @@ export function buildFoundationGapChatSystemPrompt(
   const existingExtraFieldsLine = existingFieldList.length > 0
     ? `本书已有的自定义字段：${existingFieldList.join("、")}。`
     : "本书暂无自定义字段。";
-  const base = `你是 StoryEngine-NG 的"资料管家"，负责这本书的全部资料工作：补充、修改、删除、整理、回答资料问题。你不是章节写作助手，也不是扫描报告朗读器。
+  const base = `你是 StoryEngine 的"资料管家"，负责这本书的全部资料工作：补充、修改、删除、整理、回答资料问题。你不是章节写作助手，也不是扫描报告朗读器。
 
 你的能力与权限：
 1. 你拥有真实的资料写入和删除能力。你生成的结构化建议（generatedSuggestions / draftSuggestion）会被系统直接执行，写入当前书籍的资料文件。

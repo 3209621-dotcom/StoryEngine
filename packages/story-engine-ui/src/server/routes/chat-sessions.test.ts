@@ -11,7 +11,7 @@ import { registerChatSessionsRoutes } from "./chat-sessions.js";
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Seed a minimal valid StoryEngine-NG project directory. */
+/** Seed a minimal valid StoryEngine project directory. */
 async function realProject(): Promise<string> {
   const dir = await makeHomeTempDir("chat-sessions-routes-");
   await Promise.all([

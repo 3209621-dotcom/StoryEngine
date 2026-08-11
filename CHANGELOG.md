@@ -15,9 +15,9 @@
 - 其余：聊天 markdown 分隔线假列表项、反复出场未建卡角色确定性点名、
   重载后僵尸「正在定稿…」字幕结算、keepalive 64KiB 配额守卫等
 
-## StoryEngine-NG v1 Candidate
+## StoryEngine v1 Candidate
 
-This repository captures the standalone StoryEngine-NG backend v1 candidate state.
+This repository captures the standalone StoryEngine backend v1 candidate state.
 
 Frozen / accepted modules:
 

@@ -521,7 +521,7 @@ export function App() {
             home={{
               recentBooks,
               onChooseFolder: () => {
-                const nextProjectPath = window.prompt("请输入 StoryEngine-NG 项目完整路径");
+                const nextProjectPath = window.prompt("请输入 StoryEngine 项目完整路径");
                 if (nextProjectPath?.trim()) void navigation.openProject(nextProjectPath.trim());
               },
               onCreateBook: (draft) => navigation.handleCreateBook(draft),

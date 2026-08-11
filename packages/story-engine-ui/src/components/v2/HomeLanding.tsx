@@ -50,12 +50,12 @@ export default function HomeLanding({
     <main
       ref={homeRef}
       className={`se-v2-home${reduceMotion ? " is-reduced-motion" : ""}`}
-      aria-label="StoryEngine-NG 首页"
+      aria-label="StoryEngine 首页"
     >
       <header className="se-v2-home-header">
-        <div aria-label="StoryEngine-NG 品牌" className="se-v2-home-brand">
+        <div aria-label="StoryEngine 品牌" className="se-v2-home-brand">
           <span>SE</span>
-          <strong>StoryEngine-NG</strong>
+          <strong>StoryEngine</strong>
         </div>
         <button className="se-v2-home-settings" onClick={onOpenSettings} type="button">设置</button>
       </header>
@@ -76,7 +76,7 @@ export default function HomeLanding({
           <section className="se-v2-continue-card is-empty">
             <span>继续上次写作</span>
             <strong>还没有最近书籍</strong>
-            <small>新建一本书，或打开已有 StoryEngine-NG 项目。</small>
+            <small>新建一本书，或打开已有 StoryEngine 项目。</small>
             <i><b style={{ width: "8%" }} /></i>
           </section>
         )}

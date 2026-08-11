@@ -20,7 +20,7 @@ export default function OpenBookDialog({
         <header>
           <div>
             <h2>打开已有书籍</h2>
-            <p>读取本地 StoryEngine-NG 项目的只读状态，不写入任何文件。</p>
+            <p>读取本地 StoryEngine 项目的只读状态，不写入任何文件。</p>
           </div>
           <button aria-label="取消" onClick={onCancel} type="button">×</button>
         </header>

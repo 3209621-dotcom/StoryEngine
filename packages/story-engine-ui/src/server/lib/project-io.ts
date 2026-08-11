@@ -1220,13 +1220,13 @@ export async function assertStoryEngineProject(projectDir: string): Promise<{ re
 
   const project = JSON.parse(await readFile(join(resolved, "project.json"), "utf-8")) as unknown;
   if (!isRecord(project) || typeof project.title !== "string" || !project.title.trim()) {
-    throw new Error("不是有效的 StoryEngine-NG 项目：缺少 project.json。");
+    throw new Error("不是有效的 StoryEngine 项目：缺少 project.json。");
   }
 
   for (const dir of ["story", "timeline", "world", "characters"]) {
     const dirInfo = await stat(join(resolved, dir)).catch(() => null);
     if (!dirInfo?.isDirectory()) {
-      throw new Error(`不是有效的 StoryEngine-NG 项目：缺少 ${dir} 目录。`);
+      throw new Error(`不是有效的 StoryEngine 项目：缺少 ${dir} 目录。`);
     }
   }
 
