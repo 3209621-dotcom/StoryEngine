@@ -1,0 +1,565 @@
+/**
+ * Shared LLM client logic: OpenAI-compatible HTTP calls and streaming.
+ */
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { mkdir, readFile } from "node:fs/promises";
+import { loadModelSettingsV0, renderFastDraftPromptText } from "@actalk/story-engine";
+import type { ModelSettingsLoadResult, WriterClient } from "@actalk/story-engine";
+import { writeFileAtomic } from "./project-io.js";
+import { resolveGlobalDataDir } from "./data-dirs.js";
+import { engineProfileFallback, readTaskAssignments, resolveTaskProfileId, resolveTaskThinking } from "./task-assignments.js";
+import { resolveThinkingDialect, thinkingRequestParams, type ThinkingDialect } from "./model-capabilities.js";
+import { buildFastDraftMessages } from "./builtin-anti-ai-rules.js";
+
+// 旁路文件损坏只警告一次（resolveConfiguredChatModel 每次请求都读，避免刷屏）；恢复正常后重置，再坏再警告。
+let taskAssignmentsCorruptWarned = false;
+function warnIfTaskAssignmentsCorrupt(corrupt: boolean): void {
+  if (corrupt && !taskAssignmentsCorruptWarned) {
+    taskAssignmentsCorruptWarned = true;
+    console.warn(
+      "[task-assignments] ~/.story-engine/task-assignments.json 解析失败，已忽略并回退默认" +
+        "（各任务模型走引擎配置、思考全开）；请检查该文件，修好后重启或重新保存设置即恢复。",
+    );
+  } else if (!corrupt && taskAssignmentsCorruptWarned) {
+    taskAssignmentsCorruptWarned = false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Global model settings paths（桌面前置：SE_DATA_DIR 可覆盖，默认 ~/.story-engine 不变）
+// ---------------------------------------------------------------------------
+// 函数而非模块级常量：env 每次调用现读，Electron 主进程注入 SE_DATA_DIR 后无需关心 import 顺序，
+// 测试也能逐用例注入/还原。
+
+export function globalStoryEngineDir(): string {
+  return resolveGlobalDataDir();
+}
+export function globalModelSettingsPath(): string {
+  return join(globalStoryEngineDir(), "model-settings.json");
+}
+export function globalModelSecretsPath(): string {
+  return join(globalStoryEngineDir(), "model-secrets.json");
+}
+
+/**
+ * 读全局模型设置（审查 #7·单一真值源）。以 globalModelSettingsPath() 为准 → 与保存写盘同一路径、
+ * 一致地遵循 SE_DATA_DIR。绝不再裸调 loadModelSettingsV0(homedir())——那会恒读 ~/.story-engine，
+ * 与设置页写入的 SE_DATA_DIR 目录分裂，表现为「保存成功却仍用旧模型」。
+ */
+export async function loadGlobalModelSettings(): Promise<ModelSettingsLoadResult> {
+  return loadModelSettingsV0(homedir(), { configPath: globalModelSettingsPath() });
+}
+
+// ---------------------------------------------------------------------------
+// Local model secrets
+// ---------------------------------------------------------------------------
+
+export interface ModelSecretsFile {
+  readonly version: 1;
+  readonly providerApiKeys: Readonly<Record<string, string>>;
+}
+
+function emptyModelSecrets(): ModelSecretsFile {
+  return { version: 1, providerApiKeys: {} };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isErrnoNotFound(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException)?.code === "ENOENT";
+}
+
+/**
+ * 读本机密钥库（审查 #8·「坏 JSON 不当空」）。三态：
+ *  - 文件不存在（ENOENT）→ 空库（首次运行的正常态）。
+ *  - 读失败（权限/IO）或坏 JSON → **抛错**，绝不当成空库返回。
+ *    否则上层 saveModelSecrets 会以「空 existing」合并，把用户原有密钥永久覆盖掉。
+ */
+export async function readModelSecrets(): Promise<ModelSecretsFile> {
+  let text: string;
+  try {
+    text = await readFile(globalModelSecretsPath(), "utf-8");
+  } catch (error) {
+    if (isErrnoNotFound(error)) return emptyModelSecrets();
+    throw new Error(
+      `读取本机密钥库失败（${globalModelSecretsPath()}）：${error instanceof Error ? error.message : String(error)}。` +
+        `为避免覆盖已有密钥，本次操作已中止；请检查文件权限后重试。`,
+    );
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text) as unknown;
+  } catch (error) {
+    throw new Error(
+      `本机密钥库不是有效 JSON（${globalModelSecretsPath()}）：${error instanceof Error ? error.message : String(error)}。` +
+        `为避免覆盖已有密钥，本次操作已中止；请修复或删除该文件后重试。`,
+    );
+  }
+  if (!isRecord(parsed) || !isRecord(parsed.providerApiKeys)) {
+    return emptyModelSecrets();
+  }
+  const providerApiKeys: Record<string, string> = {};
+  for (const [providerId, apiKey] of Object.entries(parsed.providerApiKeys)) {
+    if (typeof apiKey === "string" && apiKey.length > 0) {
+      providerApiKeys[providerId] = apiKey;
+    }
+  }
+  return { version: 1, providerApiKeys };
+}
+
+/** 合并已有密钥与新传入密钥（纯函数，便于单测穷举）。activeProviderIds 存在时只保留活跃 provider 的键。 */
+export function mergeProviderApiKeys(
+  existing: Readonly<Record<string, string>>,
+  input: { readonly providerApiKeys?: Readonly<Record<string, string>>; readonly activeProviderIds?: readonly string[] },
+): Record<string, string> {
+  const activeProviderIds = input.activeProviderIds ? new Set(input.activeProviderIds) : null;
+  const next: Record<string, string> = {};
+  for (const [providerId, apiKey] of Object.entries(existing)) {
+    if (!activeProviderIds || activeProviderIds.has(providerId)) {
+      next[providerId] = apiKey;
+    }
+  }
+  for (const [providerId, apiKey] of Object.entries(input.providerApiKeys ?? {})) {
+    const trimmedProviderId = providerId.trim();
+    if (!trimmedProviderId) continue;
+    if (activeProviderIds && !activeProviderIds.has(trimmedProviderId)) continue;
+    if (apiKey.trim()) {
+      next[trimmedProviderId] = apiKey.trim();
+    }
+  }
+  return next;
+}
+
+/** 序列化密钥库文件内容（供原子写 / 三文件事务复用）。 */
+export function serializeModelSecrets(providerApiKeys: Readonly<Record<string, string>>): string {
+  return `${JSON.stringify({ version: 1, providerApiKeys }, null, 2)}\n`;
+}
+
+export async function saveModelSecrets(input: {
+  readonly providerApiKeys?: Readonly<Record<string, string>>;
+  readonly activeProviderIds?: readonly string[];
+}): Promise<void> {
+  const existing = await readModelSecrets();
+  const nextProviderApiKeys = mergeProviderApiKeys(existing.providerApiKeys, input);
+  await mkdir(globalStoryEngineDir(), { recursive: true });
+  await writeFileAtomic(globalModelSecretsPath(), serializeModelSecrets(nextProviderApiKeys), { mode: 0o600 });
+}
+
+export async function getSavedProviderApiKey(providerId: string): Promise<string> {
+  const secrets = await readModelSecrets();
+  return secrets.providerApiKeys[providerId] ?? "";
+}
+
+export async function resolveProviderApiKey(provider: {
+  readonly id: string;
+  readonly apiKeyEnv?: string;
+}): Promise<string> {
+  const savedApiKey = await getSavedProviderApiKey(provider.id);
+  return savedApiKey || (provider.apiKeyEnv ? (process.env[provider.apiKeyEnv] ?? "") : "");
+}
+
+export async function hasProviderApiKey(provider: {
+  readonly id: string;
+  readonly apiKeyEnv?: string;
+}): Promise<boolean> {
+  return Boolean(await resolveProviderApiKey(provider));
+}
+
+// ---------------------------------------------------------------------------
+// Model config resolution
+// ---------------------------------------------------------------------------
+
+export type ModelTaskProfileKey = "fastDraft" | "chapterSteering" | "qualityCheck" | "repair" | "enrichment" | "draftReview" | "triage";
+
+export type ResolvedChatModel = {
+  readonly provider: ModelSettingsLoadResult["summary"]["providers"][number];
+  readonly profile: ModelSettingsLoadResult["summary"]["profiles"][number];
+  readonly apiKey: string;
+  /** 该任务是否开思考链（用户意图，由 UI 旁路 task-assignments 决定，默认开）。 */
+  readonly thinking: boolean;
+  /** 该模型的思考开关方言（请求侧模型无关·R7）：glm/qwen/none。按 model id 判，发对方言、none 整键不发。 */
+  readonly thinkingDialect: ThinkingDialect;
+};
+
+export async function resolveConfiguredChatModel(task: ModelTaskProfileKey): Promise<ResolvedChatModel> {
+  const settings = await loadGlobalModelSettings();
+  if (!settings.available) {
+    throw new Error("模型设置未配置。请先在设置中配置 Provider 和任务模型。");
+  }
+  // 任务→{档案,思考} 存 UI 旁路 task-assignments.json（引擎零改）。profileId 解析顺序：
+  // 旁路 → engineProfileFallback（与面板展示同口径）→ defaultProfile → 第一个。thinking 默认开。
+  const { file: assignments, corrupt } = await readTaskAssignments(homedir());
+  warnIfTaskAssignmentsCorrupt(corrupt);
+  const tp = settings.summary.taskProfiles as Record<string, string>;
+  // 审查 #9：区分「显式指定的 profileId」与「回退链解析出的 id」。显式指定却查不到 → 明确报错，
+  // 绝不静默切到 profiles[0]（那会让界面显示模型 A、实际用模型 B，影响成本/隐私/能力判断）。
+  const explicitProfileId = resolveTaskProfileId(assignments, task);
+  const profileId = explicitProfileId
+    ?? engineProfileFallback(tp, task)
+    ?? settings.summary.defaultProfile
+    ?? settings.summary.profiles[0]?.id;
+  const profile = settings.summary.profiles.find((item) => item.id === profileId);
+  if (!profile) {
+    if (explicitProfileId && profileId === explicitProfileId) {
+      throw new Error(
+        `任务「${task}」指定的模型档案「${explicitProfileId}」不存在（可能已删除或改名）。` +
+          `请在设置中重新为该任务选择模型。`,
+      );
+    }
+    throw new Error(
+      `任务「${task}」未解析到有效的模型 profile（解析结果：「${profileId ?? "空"}」）。请在设置中检查该任务的模型分配。`,
+    );
+  }
+  const provider = settings.summary.providers.find((item) => item.id === profile.provider);
+  if (!provider) {
+    throw new Error(`Profile ${profile.id} 引用了不存在的 Provider：${profile.provider}`);
+  }
+  const apiKey = await resolveProviderApiKey(provider);
+  if (provider.apiKeyStatus === "missing" && !apiKey) {
+    throw new Error(`API Key 未设置。请设置环境变量 ${provider.apiKeyEnv}。`);
+  }
+  return {
+    provider,
+    profile,
+    apiKey,
+    thinking: resolveTaskThinking(assignments, task),
+    thinkingDialect: resolveThinkingDialect(profile.model),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// OpenAI-compatible HTTP helper
+// ---------------------------------------------------------------------------
+
+export async function callOpenAICompatibleChatModel(input: {
+  readonly configured: ResolvedChatModel;
+  readonly messages: readonly { readonly role: string; readonly content: string }[];
+  readonly temperature?: number;
+  readonly maxTokens?: number;
+  readonly responseFormat?: { readonly type: "json_object" };
+  readonly stream?: boolean;
+  readonly timeoutMs?: number;
+}): Promise<{ readonly content: string; readonly raw: string; readonly response: Response }> {
+  const controller = new AbortController();
+  const timeoutMs = input.timeoutMs ?? input.configured.profile.timeoutMs ?? 60000;
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  // 不设人为上限——**一律不传 max_tokens**，让模型用自身上限跑完、自然收尾，绝不截断。
+  // 推理模型的思考(reasoning_content)也算进 max_tokens，实测光思考就要 6~9k token；任何小上限都会把思考
+  // 还没写完就截断、正文 content 一个字没出（真机：世界观/做厚/正文都中招）。实测本网关不传＝用模型上限
+  // （区间上限 393216、长输出 finish=stop 不截）；传 0 反被 DeepSeek 拒（"valid range [1,393216]"）。
+  // 故忽略调用方传入的 maxTokens（那些小值正是病根）；输出长度由提示词约束、模型自然收尾。思考全程保留。
+  try {
+    const response = await fetch(`${input.configured.provider.baseUrl.replace(/\/+$/u, "")}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(input.configured.apiKey ? { authorization: `Bearer ${input.configured.apiKey}` } : {}),
+      },
+      body: JSON.stringify({
+        model: input.configured.profile.model,
+        messages: input.messages,
+        temperature: input.temperature ?? input.configured.profile.temperature ?? 0.7,
+        ...(input.responseFormat ? { response_format: input.responseFormat } : {}),
+        // 思考链方言（请求侧模型无关·R7）：按 model id 翻成该模型认的开关（GLM thinking:{type} / Qwen enable_thinking /
+        // 认不出整键不发）。**这是非流式路**——Qwen 非流式会被强制 enable_thinking:false（否则 400）。开/关由 task-assignments 决定。
+        ...thinkingRequestParams({ dialect: input.configured.thinkingDialect, thinking: input.configured.thinking, stream: input.stream ?? false }),
+        stream: input.stream ?? false,
+      }),
+      signal: controller.signal,
+    });
+    const raw = await response.text();
+    return { content: parseFirstChoiceContent(raw), raw, response };
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(`模型请求超时：${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * 抠出首个 choice 的正文。绝不静默返回空串——若 content 为空，抛带诊断的错：
+ * 推理模型把 max_tokens 预算全耗在思考链上(finish_reason=length + 有 reasoning_content)、正文还没开始就被截断，
+ * 是最常见真因（真机实测：世界观/做厚一直失败）。据此提示「调大 max_tokens」，而不是让下游报一句模糊的「不是 JSON」。
+ */
+function parseFirstChoiceContent(raw: string): string {
+  const parsed = JSON.parse(raw) as {
+    readonly choices?: readonly { readonly message?: { readonly content?: string; readonly reasoning_content?: string }; readonly finish_reason?: string }[];
+    readonly error?: { readonly message?: string };
+  };
+  if (parsed.error?.message) throw new Error(`模型返回错误：${parsed.error.message}`);
+  const choice = parsed.choices?.[0];
+  const content = choice?.message?.content?.trim() ?? "";
+  if (content) return content;
+  const reasonedButNoOutput = (choice?.message?.reasoning_content?.length ?? 0) > 0 || choice?.finish_reason === "length";
+  if (reasonedButNoOutput) {
+    throw new Error("模型把额度全用在思考链上、正文(content)为空。本网关已不设 max_tokens 上限（用模型自身上限，见上注释），别再调 max_tokens；多为提示词过长或模型异常，可重试或换更快/更稳的模型。");
+  }
+  throw new Error("模型返回了空内容。");
+}
+
+// ---------------------------------------------------------------------------
+// Writer client
+// ---------------------------------------------------------------------------
+
+export async function createConfiguredWriterClient(task: ModelTaskProfileKey, onDelta?: (delta: string) => void): Promise<WriterClient> {
+  const configured = await resolveConfiguredChatModel(task);
+  return createOpenAICompatibleWriterClient(configured, onDelta);
+}
+
+/**
+ * 出稿 writer 客户端。**流式**调模型（afterfix 真机根因：非流式整章生成 100~140s，卡 hub 代理超时边界 → 间歇
+ * 500「Internal server error」；流式首字节秒级、连接全程有字节、代理不判超时）。复用 streamChatModelToText：
+ * 有字节就续命、不设总时长上限（超时铁律），一律不传 max_tokens，思考方言按 configured 翻译（模型无关）。
+ * 这也收束了「非流式 writer」这条旧路——出稿与聊天/审稿/质检统一走同一条流式主干。导出以便单测。
+ */
+export function createOpenAICompatibleWriterClient(configured: ResolvedChatModel, onDelta?: (delta: string) => void): WriterClient {
+  return {
+    async generateDraft({ context }) {
+      const { content } = await streamChatModelToText({
+        configured,
+        // 内置去AI味铁律（system·固定常量前缀）+ 引擎产出的正文 prompt（user）。
+        // 准则是产品内核：内置代码常量、用户看不见/删不掉、只我们升级；引擎包零改（见 builtin-anti-ai-rules.ts）。
+        messages: buildFastDraftMessages(renderFastDraftPromptText(context)),
+        temperature: configured.profile.temperature ?? 0.8,
+        // 出稿流式：传了 onDelta 就把正文逐字外发（agent 路流式进编辑器）；runFastDraft 仍拿完整 content，引擎零改。
+        ...(onDelta ? { onDelta } : {}),
+      });
+      return {
+        title: `第${context.chapter}章`,
+        content: content.trim(),
+      };
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// SSE streaming reader
+// ---------------------------------------------------------------------------
+
+export async function streamOpenAICompatibleResponse(
+  response: globalThis.Response,
+  onDelta: (delta: string) => void,
+  onThinkingDelta?: (delta: string) => void,
+  // 每收到一块原始字节就回调（含 keepalive / 仅 role 的首块）——用于空闲超时「有字节就续命」，
+  // 比只盯 content/thinking delta 更准：思考阶段 content 为空但 reasoning 在流，连接其实活着。
+  onActivity?: () => void,
+): Promise<{ readonly content: string; readonly thinking: string }> {
+  if (!response.body) {
+    const parsed = await response.json() as { readonly choices?: readonly { readonly message?: { readonly content?: string } }[] };
+    const content = parsed.choices?.[0]?.message?.content ?? "";
+    if (content) onDelta(content);
+    return { content, thinking: "" };
+  }
+
+  const decoder = new TextDecoder();
+  const reader = response.body.getReader();
+  let buffer = "";
+  let content = "";
+  let thinking = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    onActivity?.(); // 收到任何字节 → 续命（重置空闲超时）
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split(/\r?\n/u);
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data:")) continue;
+      const data = trimmed.slice("data:".length).trim();
+      if (!data) continue;
+      if (data === "[DONE]") {
+        await reader.cancel().catch(() => undefined);
+        return { content, thinking };
+      }
+      try {
+        const parsed = JSON.parse(data) as {
+          readonly choices?: readonly {
+            readonly delta?: {
+              readonly content?: string;
+              readonly reasoning_content?: string;
+              readonly thinking?: string;
+              readonly role?: string;
+            };
+            readonly message?: { readonly content?: string };
+          }[];
+        };
+        const delta = parsed.choices?.[0]?.delta;
+        const textDelta = delta?.content ?? parsed.choices?.[0]?.message?.content ?? "";
+        if (textDelta) {
+          content += textDelta;
+          onDelta(textDelta);
+        }
+        // Extract thinking/reasoning tokens from providers that support it
+        const thinkDelta = delta?.reasoning_content ?? delta?.thinking ?? "";
+        if (thinkDelta && onThinkingDelta) {
+          thinking += thinkDelta;
+          onThinkingDelta(thinkDelta);
+        }
+      } catch {
+        // Ignore provider keepalive or non-JSON stream fragments.
+      }
+    }
+  }
+
+  return { content, thinking };
+}
+
+// ---------------------------------------------------------------------------
+// 空闲超时（不设总时长上限：有字节就续命、彻底静默才判死）
+// ---------------------------------------------------------------------------
+
+/** 默认空闲窗口：流式调模型时，完全收不到任何字节超过这么久才判定连接已死。
+ * 不是「总时长上限」——只要还有 token（正文或思考）在流，每块都续命、永不超时。 */
+export const STREAM_IDLE_TIMEOUT_MS = 90_000;
+
+/**
+ * 空闲超时控制器。`kick()` 每被调用一次就把计时器清零重排；只有连续静默达 `idleMs`
+ * （一个字节都没来）才 `controller.abort()`。配合 streamOpenAICompatibleResponse 的 onActivity
+ * 实现「有输出就续命、不设总上限」——治审稿/质检长内容被 60s/25s 死表误杀。
+ */
+export function createIdleAbort(idleMs: number): {
+  readonly controller: AbortController;
+  kick(): void;
+  dispose(): void;
+} {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const arm = (): void => {
+    timer = setTimeout(() => controller.abort(), idleMs);
+    // Node：别让这个计时器吊住进程退出（fake timer 下无 unref，按存在性判定）。
+    const maybeUnref = timer as unknown as { unref?: () => void };
+    if (typeof maybeUnref.unref === "function") maybeUnref.unref();
+  };
+  const kick = (): void => {
+    if (controller.signal.aborted) return; // 已判死就不复活
+    if (timer) clearTimeout(timer);
+    arm();
+  };
+  const dispose = (): void => {
+    if (timer) clearTimeout(timer);
+    timer = undefined;
+  };
+  arm();
+  return { controller, kick, dispose };
+}
+
+/**
+ * 流式调 OpenAI 兼容模型并把全文聚合成字符串。**不设总时长上限**：只要还有字节（正文或思考 token）
+ * 在流，空闲计时器就被续命；只有彻底静默超过 `idleTimeoutMs` 才判定连接已死并抛错。
+ * 用于审稿/质检这类「内容多、生成久」的只读重活——它们曾因 60s/25s 的 AbortController 死表被误杀。
+ * 一律不传 max_tokens（见 callOpenAICompatibleChatModel 注释）；`thinking:enabled` 思考链全程保留。
+ */
+export async function streamChatModelToText(input: {
+  readonly configured: ResolvedChatModel;
+  readonly messages: readonly { readonly role: string; readonly content: string }[];
+  readonly temperature?: number;
+  readonly responseFormat?: { readonly type: "json_object" };
+  readonly idleTimeoutMs?: number;
+  /** 每段正文 delta 实时回调（出稿流式进编辑器用）；不传则照常只聚合、不外发。 */
+  readonly onDelta?: (delta: string) => void;
+}): Promise<{ readonly content: string; readonly thinking: string }> {
+  const idleTimeoutMs = input.idleTimeoutMs ?? STREAM_IDLE_TIMEOUT_MS;
+  const idle = createIdleAbort(idleTimeoutMs);
+  let gotBytes = false; // 是否收过任何字节——区分「从头零响应」与「流到一半断流」，错误文案才诚实（治审查 #5）
+  try {
+    const response = await fetch(`${input.configured.provider.baseUrl.replace(/\/+$/u, "")}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(input.configured.apiKey ? { authorization: `Bearer ${input.configured.apiKey}` } : {}),
+      },
+      body: JSON.stringify({
+        model: input.configured.profile.model,
+        messages: input.messages,
+        temperature: input.temperature ?? input.configured.profile.temperature ?? 0.7,
+        ...(input.responseFormat ? { response_format: input.responseFormat } : {}),
+        // 思考链方言（模型无关·R7）：按 model id 翻成该模型认的开关。**这是流式路**——Qwen 可正常开关思考。见 thinkingRequestParams。
+        ...thinkingRequestParams({ dialect: input.configured.thinkingDialect, thinking: input.configured.thinking, stream: true }),
+        stream: true,
+      }),
+      signal: idle.controller.signal,
+    });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(`模型请求失败：${response.status} ${errorText.slice(0, 300)}`);
+    }
+    const { content, thinking } = await streamOpenAICompatibleResponse(
+      response,
+      input.onDelta ?? (() => undefined), // 正文 delta：传了 onDelta 就逐字外发（出稿流式），否则只聚合
+      () => undefined,
+      () => { gotBytes = true; idle.kick(); }, // 收到任何字节就续命，并记下「收过字节」
+    );
+    return { content, thinking };
+  } catch (error) {
+    if (idle.controller.signal.aborted) {
+      const secs = Math.round(idleTimeoutMs / 1000);
+      throw new Error(
+        gotBytes
+          ? `模型生成中途静默超过 ${secs}s（已收到部分输出后上游断流，长内容生成时常见），请重试。`
+          : `模型连接静默超过 ${secs}s（一直没有任何响应），判定连接已死，请重试。`,
+      );
+    }
+    throw error;
+  } finally {
+    idle.dispose();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Model settings text
+// ---------------------------------------------------------------------------
+
+export async function readModelSettingsText(status: ModelSettingsLoadResult["status"]): Promise<string> {
+  if (status === "missing") return defaultModelSettingsText();
+  try {
+    return await readFile(globalModelSettingsPath(), "utf-8");
+  } catch {
+    return defaultModelSettingsText();
+  }
+}
+
+function defaultModelSettingsText(): string {
+  return `${JSON.stringify({
+    version: 1,
+    defaultProvider: "main",
+    defaultProfile: "balanced",
+    providers: {
+      main: {
+        id: "main",
+        label: "OpenAI Compatible",
+        type: "openai-compatible",
+        baseUrl: "https://api.example.com/v1",
+        apiKeyEnv: "STORY_ENGINE_API_KEY",
+      },
+    },
+    profiles: {
+      balanced: {
+        id: "balanced",
+        label: "长篇均衡",
+        provider: "main",
+        model: "model-name",
+        temperature: 0.7,
+        maxTokens: 4096,
+        timeoutMs: 60000,
+        retries: 2,
+        stream: true,
+      },
+    },
+    taskProfiles: {
+      fastDraft: "balanced",
+      chapterSteering: "balanced",
+      qualityCheck: "balanced",
+      repair: "balanced",
+      draftReview: "balanced",
+      triage: "balanced",
+    },
+  }, null, 2)}\n`;
+}

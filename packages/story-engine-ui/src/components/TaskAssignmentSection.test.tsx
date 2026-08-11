@@ -1,0 +1,75 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { TaskAssignmentSection } from "./TaskAssignmentSection.js";
+import { TASK_LABELS } from "./ModelSettingsDialogTypes.js";
+
+describe("TaskAssignmentSection 7 行两旋钮", () => {
+  afterEach(cleanup); // 每个用例后卸载，避免多次 render 在 document.body 里堆叠出陈旧节点
+  it("TASK_LABELS 含 triage/enrichment、不含 futureReview，共 7 个", () => {
+    const keys = Object.keys(TASK_LABELS);
+    expect(keys).toContain("triage");
+    expect(keys).toContain("enrichment");
+    expect(keys).not.toContain("futureReview");
+    expect(keys).toHaveLength(7);
+  });
+
+  it("内容审阅任务说明使用深度分析口径", () => {
+    render(
+      <TaskAssignmentSection
+        tasks={{}}
+        thinking={{}}
+        savedProviders={[]}
+        onEditTask={() => {}}
+        onToggleThinking={() => {}}
+      />,
+    );
+    expect(screen.getByText("内容审阅")).toBeTruthy();
+    expect(screen.getByText(/深度分析整章/u)).toBeTruthy();
+  });
+
+  it("每个任务渲染一个思考开关（checkbox），共 7 个", () => {
+    render(
+      <TaskAssignmentSection
+        tasks={{}}
+        thinking={{}}
+        savedProviders={[]}
+        onEditTask={() => {}}
+        onToggleThinking={() => {}}
+      />,
+    );
+    expect(screen.getAllByRole("checkbox")).toHaveLength(7);
+  });
+
+  it("点击思考开关回调 onToggleThinking", () => {
+    const onToggle = vi.fn();
+    render(
+      <TaskAssignmentSection
+        tasks={{}}
+        thinking={{ fastDraft: false }}
+        savedProviders={[]}
+        onEditTask={() => {}}
+        onToggleThinking={onToggle}
+      />,
+    );
+    const first = screen.getAllByRole("checkbox")[0];
+    if (first) fireEvent.click(first); // React 把 checkbox 的 onChange 映射到 click 事件
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("未单独分配的任务明确提示不会自动跟随正文生成模型", () => {
+    render(
+      <TaskAssignmentSection
+        tasks={{ fastDraft: "deepseek|deepseek-v4-flash" }}
+        thinking={{}}
+        savedProviders={[{ id: "deepseek", label: "DeepSeek", baseUrl: "https://example.test", apiKeyEnv: "DEEPSEEK_API_KEY", apiKeyStatus: "present" }]}
+        onEditTask={() => {}}
+        onToggleThinking={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("deepseek-v4-flash")).toBeTruthy();
+    expect(screen.getAllByText(/未单独分配/u).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/不会自动跟随正文生成/u).length).toBeGreaterThan(0);
+  });
+});

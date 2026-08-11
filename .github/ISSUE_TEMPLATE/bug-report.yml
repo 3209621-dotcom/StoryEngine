@@ -1,0 +1,38 @@
+name: Bug 报告
+description: 使用中遇到了问题？
+title: "[Bug] 简短描述问题"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: 感谢报告问题！请尽量填全以下信息，能帮我们快速定位。
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / 使用方式
+      description: 桌面端还是浏览器？哪个版本？用的什么模型（DeepSeek/GLM/GPT 等）？
+      placeholder: 例如：桌面端 v0.2 / 浏览器 dev / DeepSeek
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么
+      description: 描述具体现象，最好贴上 AI 聊天里的原文或报错信息
+    validations:
+      required: true
+  - type: textarea
+    id: expect
+    attributes:
+      label: 期望的行为
+      description: 你本来预期会发生什么？
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 怎么操作会触发这个问题？（可选，但很有用）
+      placeholder: |
+        1. 打开书 → 2. 对 AI 说「...」 → 3. 看到 ...
+  - type: markdown
+    attributes:
+      value: 注意：请勿在 issue 中粘贴任何 API Key 或密钥。

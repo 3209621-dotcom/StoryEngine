@@ -1,0 +1,51 @@
+# StoryEngine-NG
+
+> 🚧 **Under active development**: the project is iterating quickly. Found a problem or want a feature? Open an [issue](https://github.com/3209621-dotcom/StoryEngine/issues) and we will take it seriously.
+
+**Chat-driven long-form fiction writing. You talk to the AI; the AI calls tools to read/write story state, generate drafts, and review before committing — every state change goes through deterministic engine checks, previewable and reversible at each step.**
+
+## What this is
+
+Not "an AI that writes novels for you", but an **AI writing team that takes your direction**: you direct, the AI writes, self-checks, and keeps the books.
+
+- **Dialogue-driven**: you talk, it writes. You always see what is being written and how it changes
+- **Long-form without collapse**: it does not lose memory or mix up settings by chapter 200 — a hook planted in chapter 3 is still remembered in chapter 30
+- **Anti-AI-flavor**: specifically strips the "this was written by AI" feel
+- **Web research**: say "look up X" and the AI searches the web with cited sources — treated as reference material, never fabricated
+- **Local-first**: your books, drafts, and settings live on your own machine
+
+## Packages
+
+- `packages/story-engine`: core state engine (draft / commit / review / threads / hooks / arc goals)
+- `packages/story-engine-cli`: CLI for draft, commit, review, maintenance, and diagnostics flows
+- `packages/story-engine-ui`: React author workbench plus the standalone local HTTP/SSE server (chat agent)
+- `packages/story-engine-desktop`: Electron shell and guarded desktop packaging workflow
+
+## Quick start
+
+Requires Node.js `^20.20.0` / `^22.22.0` / `>=24.0.0` and pnpm 11:
+
+```bash
+pnpm install   # installs deps (auto-builds the core engine)
+pnpm dev       # starts the writing workbench
+```
+
+Then open the address shown in the terminal (default `http://127.0.0.1:5173`).
+
+**Model setup (BYO-key)**: open "AI 设置" (AI Settings) in the app sidebar, add a provider and paste your API key
+(any OpenAI-compatible endpoint works: DeepSeek, GLM, Kimi, OpenAI, …). Keys stay on your machine
+(`~/.story-engine/`); never commit keys to any repository.
+
+## Development
+
+```bash
+pnpm test
+pnpm typecheck
+pnpm build
+```
+
+GitHub CI runs these workspace commands on Node.js 22 and pnpm 11.
+
+## License
+
+AGPL-3.0.

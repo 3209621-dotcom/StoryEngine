@@ -1,0 +1,17 @@
+packages:
+  - "packages/story-engine"
+  - "packages/story-engine-cli"
+  - "packages/story-engine-ui"
+  - "packages/story-engine-desktop"
+allowBuilds:
+  esbuild: true
+  msw: true
+  electron: true
+  # electron-winstaller 只服务 Squirrel 安装器（我们用 NSIS），构建脚本不需要跑。
+  electron-winstaller: false
+# pnpm run 前的依赖状态校验在本仓库会偶发 "File name too long" 误报（深层 pnpm 路径），
+# 且 monorepo 内 install 时机由人控制——关掉，别让 typecheck/test 被它随机绊倒。
+verifyDepsBeforeRun: false
+overrides:
+  "js-yaml@3.14.2": "3.15.0"
+  "picomatch@4.0.3": "4.0.4"

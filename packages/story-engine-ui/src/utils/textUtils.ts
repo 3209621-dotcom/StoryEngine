@@ -1,0 +1,122 @@
+/**
+ * Unified text normalization for UI display.
+ * All rules are declarative: add/remove entries in textRules without touching the engine.
+ */
+
+const STORY_WORD_PATTERN = /\bstory\b/giu;
+
+const textRules: Array<[pattern: string | RegExp, replacement: string]> = [
+  // Internal state labels → user-facing Chinese
+  [/^chapter_(\d+)_committed$/iu, "第$1章已提交"],
+  [/chapter_\d+_committed/giu, "已入库章节"],
+  ["后端未提供", "尚未配置"],
+  ["touched", "已触及"],
+  // Paths and file-system artifacts
+  [/undefined\/drafts(?:\/fast)?/giu, "草稿目录"],
+  ["ENOENT", "本地文件未找到"],
+  // Character/location/asset ID fragments
+  [/char-[a-z0-9-]+/giu, "角色"],
+  [/loc-[a-z0-9-]+/giu, "地点"],
+  // Transportation vocabulary
+  [/\bstairs\b/giu, "楼梯"],
+  [/\bwalk\b/giu, "步行"],
+  [/\btaxi\b/giu, "打车"],
+  [/\bbus\b/giu, "公交"],
+  [/\belevator\b/giu, "电梯"],
+  // Object states
+  [/\bled\b/giu, "受限"],
+  [/\bdamaged\b/giu, "受损"],
+  [/\bavailable\b/giu, "可用"],
+  [/\bunknown\b/giu, "尚未设定"],
+  // Engine module names
+  ["HookPool", "伏笔池"],
+  ["ThreadPool", "线索池"],
+  ["ArcGoal", "主线目标"],
+  ["arcGoal", "主线目标"],
+  ["Commit Preview", "入库预览"],
+  ["cleanup-visible intent", "需要清理的低价值意图"],
+  ["stale intent", "过期意图"],
+  // Narrative terminology
+  [/\s*[·•]\s*open\b/giu, " · 未闭合"],
+  ["Location Bible", "地点设定"],
+  ["Story Bible", "故事设定"],
+  ["Character Bible", "角色设定"],
+  ["World Bible", "世界设定"],
+  [/\barc\b/giu, "主线"],
+  [/\bHook\b/gu, "伏笔"],
+  [/\bThread\b/gu, "线索"],
+  [/\bhook\b/gu, "伏笔"],
+  [/\bthread\b/gu, "线索"],
+  [STORY_WORD_PATTERN, "章节"],
+  [/\btimeline\b/giu, "时间线"],
+  [/\bworld\b/giu, "世界"],
+  [/\bcharacter\b/giu, "角色"],
+  // Domain terminology
+  ["Character State", "角色状态"],
+  ["World State", "世界状态"],
+  ["Asset ChangePlan", "资产变更建议"],
+  ["Location ChangePlan", "地点变更建议"],
+  // UI flow labels
+  ["提交预览", "入库预览"],
+  ["正式提交", "确认入库"],
+  ["正式状态", "正式故事"],
+];
+
+export function cleanUiText(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  let result = value;
+  for (const [pattern, replacement] of textRules) {
+    if (pattern === STORY_WORD_PATTERN && looksLikePathText(result)) continue;
+    if (typeof pattern === "string") {
+      result = result.replaceAll(pattern, replacement);
+    } else {
+      result = result.replace(pattern, replacement);
+    }
+  }
+  return result;
+}
+
+function looksLikePathText(value: string): boolean {
+  return value.includes("/") || /\.json\b/iu.test(value);
+}
+
+export function countTextWords(text: string): number {
+  return text.replace(/^#.*$/gmu, "").replace(/\s+/gu, "").length;
+}
+
+/**
+ * 毫秒时间戳 → 用户可读的相对时间标签（刚刚 / N 分钟前 / N 小时前 / N 天前 / 具体日期）。
+ * 服务端书架扫描与前端共用（此文件是纯函数、服务端可安全导入）。
+ * 非法/零值按「时间未知」兜底——不能显示「刚刚」：排序把 0 当最旧沉底，标签却装最新，自相矛盾（评审加固）。
+ */
+export function formatRelativeTimeMs(thenMs: number, nowMs: number = Date.now()): string {
+  if (!Number.isFinite(thenMs) || thenMs <= 0) return "时间未知";
+  const diffSec = Math.max(0, Math.round((nowMs - thenMs) / 1000));
+  if (diffSec < 60) return "刚刚";
+  const mins = Math.round(diffSec / 60);
+  if (mins < 60) return `${mins} 分钟前`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.round(hours / 24);
+  if (days < 30) return `${days} 天前`;
+  return new Date(thenMs).toLocaleDateString("zh-CN");
+}
+
+export function compactStrings(values: readonly (string | undefined | null)[]): string[] {
+  return values.map((value) => cleanUiText(value?.trim())).filter((value): value is string => Boolean(value));
+}
+
+export function looksLikeDraftBody(text: string): boolean {
+  const normalized = text.trim();
+  if (normalized.length > 700) return true;
+  const paragraphs = normalized.split(/\n\s*\n/u).filter((item) => item.trim().length > 0);
+  return paragraphs.length >= 3 && normalized.length > 360;
+}
+
+export function extractDraftTitle(content: string | undefined): string | null {
+  if (!content) return null;
+  const firstLine = content.split(/\r?\n/u).find((line) => line.trim().length > 0)?.trim();
+  if (!firstLine?.startsWith("#")) return null;
+  const title = firstLine.replace(/^#+\s*/u, "").replace(/^第[一二三四五六七八九十百\d]+章\s*[·：:、-]?\s*/u, "").trim();
+  return title || null;
+}

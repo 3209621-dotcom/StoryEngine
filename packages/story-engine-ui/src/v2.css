@@ -1,0 +1,1626 @@
+/* 暗金设计 token 基座：定义在 :root，全局可解析。
+ * 此前整套 token 只定义在 .se-v2-shell 上，但首页(.se-v2-home)与 Radix 弹窗(portal 挂 body)
+ * 都不在 shell 作用域内 —— 导致首页/弹窗里派生 token(accent-border 系列、danger 系列等）
+ * 全部失效(border 掉成 currentColor、box-shadow 整条作废、danger 字色掉成继承白)。
+ * 提到 :root 后首页视觉精修与弹窗 danger 色才真正生效，也补回 2B-1 呼吸辉光。
+ * .se-v2-shell / .se-v2-home 的本地同名定义(同值)仍在、优先级更高，工作台行为不变。 */
+:root {
+  --se-v2-bg: #0f0e0c;
+  --se-v2-panel: #1a1917;
+  --se-v2-card: #23221f;
+  --se-v2-hover: #2a2925;
+  --se-v2-line: #2e2d2a;
+  --se-v2-line-weak: #1f1e1c;
+  --se-v2-text: #e8e6e1;
+  --se-v2-muted: #9a9893;
+  --se-v2-faint: #6b6964;
+  --se-v2-accent: #c8956c;
+  --se-v2-success: #7a9e7e;
+  --se-v2-danger: #b86b6b;
+  --se-v2-warning: #d9a441;
+  --se-v2-alpha-xs: 0.03;
+  --se-v2-alpha-sm: 0.08;
+  --se-v2-alpha-md: 0.16;
+  --se-v2-alpha-lg: 0.32;
+  --se-v2-alpha-xl: 0.52;
+  --se-v2-accent-border-sm: rgba(200, 149, 108, 0.08);
+  --se-v2-accent-border-md: rgba(200, 149, 108, 0.16);
+  --se-v2-accent-border-lg: rgba(200, 149, 108, 0.32);
+  --se-v2-danger-border-sm: rgba(184, 107, 107, 0.10);
+  --se-v2-shadow-accent: 0 0 42px rgba(200, 149, 108, 0.08);
+  --se-v2-btn-radius: 9px;
+  --se-v2-btn-height: 36px;
+  --se-v2-btn-padding: 8px 14px;
+  --se-v2-btn-font: 12px;
+}
+
+.se-v2-shell {
+  --se-v2-bg: #0f0e0c;
+  --se-v2-panel: #1a1917;
+  --se-v2-card: #23221f;
+  --se-v2-hover: #2a2925;
+  --se-v2-line: #2e2d2a;
+  --se-v2-line-weak: #1f1e1c;
+  --se-v2-text: #e8e6e1;
+  --se-v2-muted: #9a9893;
+  --se-v2-faint: #6b6964;
+  --se-v2-accent: #c8956c;
+  --se-v2-success: #7a9e7e;
+  --se-v2-danger: #b86b6b;
+  --se-v2-warning: #d9a441;
+  --se-v2-sidebar-width: 200px;
+  --se-v2-right-width: 440px;
+  /* Alpha 透明度阶梯 */
+  --se-v2-alpha-xs: 0.03;
+  --se-v2-alpha-sm: 0.08;
+  --se-v2-alpha-md: 0.16;
+  --se-v2-alpha-lg: 0.32;
+  --se-v2-alpha-xl: 0.52;
+  /* 语义化颜色+透明度组合 */
+  --se-v2-accent-border-sm: rgba(200, 149, 108, 0.08);
+  --se-v2-accent-border-md: rgba(200, 149, 108, 0.16);
+  --se-v2-accent-border-lg: rgba(200, 149, 108, 0.32);
+  --se-v2-danger-border-sm: rgba(184, 107, 107, 0.10);
+  --se-v2-shadow-accent: 0 0 42px rgba(200, 149, 108, 0.08);
+  /* 统一按钮样式系统 */
+  --se-v2-btn-radius: 9px;
+  --se-v2-btn-height: 36px;
+  --se-v2-btn-padding: 8px 14px;
+  --se-v2-btn-font: 12px;
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--se-v2-bg);
+  color: var(--se-v2-text);
+  font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* ---- 统一按钮系统：3 种变体 ---- */
+.se-v2-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--se-v2-btn-height);
+  padding: var(--se-v2-btn-padding);
+  font-size: var(--se-v2-btn-font);
+  font-weight: 600;
+  border-radius: var(--se-v2-btn-radius);
+  border: 1px solid var(--se-v2-line);
+  background: transparent;
+  color: var(--se-v2-text);
+  cursor: pointer;
+  /* 里程碑2·主按钮 hover 升起：补 transform/box-shadow 过渡（关闭见文末 reduced-motion 总开关） */
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 160ms ease,
+    box-shadow 160ms ease;
+}
+.se-v2-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.se-v2-btn:not(:disabled):hover { background: var(--se-v2-hover); }
+
+/* primary: 铜棕底色 */
+.se-v2-btn.se-v2-btn-primary {
+  background: var(--se-v2-accent);
+  border-color: var(--se-v2-accent);
+  color: var(--se-v2-bg);
+}
+.se-v2-btn.se-v2-btn-primary:not(:disabled):hover {
+  background: #d4a27a;
+  border-color: #d4a27a;
+  /* 里程碑2·hover 跟手微动：主按钮轻微升起+暗金阴影加深 */
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(200, 149, 108, 0.24);
+}
+
+/* ghost: 透明 */
+.se-v2-btn.se-v2-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--se-v2-muted);
+}
+.se-v2-btn.se-v2-btn-ghost:not(:disabled):hover {
+  background: var(--se-v2-hover);
+  color: var(--se-v2-text);
+}
+
+body:has(.se-v2-shell),
+#root:has(.se-v2-shell) {
+  min-width: 0;
+  width: 100%;
+}
+
+.se-v2-shell :where(button, input, textarea, select, summary, [role="button"], [tabindex]):not(:disabled):focus-visible,
+.se-v2-home :where(button, input, textarea, select, summary, [role="button"], [tabindex]):not(:disabled):focus-visible {
+  outline: 2px solid rgba(230, 178, 83, 0.92);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(230, 178, 83, 0.18);
+}
+
+.se-v2-shell :where(button, input, textarea, select, summary, [role="button"], [tabindex]):disabled:focus-visible,
+.se-v2-home :where(button, input, textarea, select, summary, [role="button"], [tabindex]):disabled:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.se-v2-home {
+  --se-v2-bg: #0f0e0c;
+  --se-v2-panel: #1a1917;
+  --se-v2-card: #23221f;
+  --se-v2-hover: #2a2925;
+  --se-v2-line: #2e2d2a;
+  --se-v2-line-weak: #1f1e1c;
+  --se-v2-text: #e8e6e1;
+  --se-v2-muted: #9a9893;
+  --se-v2-faint: #6b6964;
+  --se-v2-accent: #c8956c;
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  background: #0f0e0c;
+  color: #e8e6e1;
+  font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* 首页光标聚光灯：整屏跟手辉光层（复用写作台 M2 的 --mx/--my 口径）。
+ * position:fixed 让辉光相对视口铺满、escape 父级 overflow-x:hidden；
+ * 不给 .se-v2-home 加 contain:paint —— 要整屏跟手辉光，且别裁删除/重命名弹窗。 */
+.se-v2-home::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    420px circle at var(--mx, -999px) var(--my, -999px),
+    var(--se-v2-accent-border-md),
+    transparent 72%
+  );
+  transition: background 0.08s linear;
+}
+
+/* 内容浮在辉光层之上 */
+.se-v2-home > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 降低动效收口（聚光灯熄灯）：系统 reduce + 手动 .is-reduced-motion 双开关。
+ * useCursorSpotlight(homeRef, !reduceMotion) 在 reduceMotion 时已把光斑挪屏外，
+ * 这里再 display:none 双保险，与写作台同口径。 */
+@media (prefers-reduced-motion: reduce) {
+  .se-v2-home::after { display: none; }
+
+
+}
+.se-v2-home.is-reduced-motion::after { display: none; }
+
+.se-v2-home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+}
+
+.se-v2-home-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--se-v2-text);
+}
+
+.se-v2-home-brand span {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(200, 149, 108, 0.15);
+  color: var(--se-v2-accent);
+  font-weight: 900;
+}
+
+.se-v2-home-brand strong {
+  font-size: 18px;
+  letter-spacing: .02em;
+}
+
+.se-v2-home-settings {
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--se-v2-muted);
+  padding: 9px 13px;
+}
+
+.se-v2-home-settings:hover {
+  background: var(--se-v2-hover);
+  color: var(--se-v2-text);
+}
+
+.se-v2-home-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 32px 64px;
+}
+
+.se-v2-home-hero {
+  position: relative;
+  width: min(100%, 880px);
+  height: 224px;
+  overflow: hidden;
+  margin-bottom: 40px;
+  border-radius: 24px;
+  background: var(--se-v2-panel);
+  border: 1px solid rgba(200,149,108,.12);
+  /* 顶部叠一层与首页聚光灯同色系的低强度辉光，呼应 accent；底部保留原压暗 inset。 */
+  box-shadow:
+    inset 0 -80px 110px rgba(0, 0, 0, 0.42),
+    inset 0 60px 90px -60px var(--se-v2-accent-border-md);
+}
+
+.se-v2-home-hero::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    linear-gradient(90deg, rgba(15, 14, 12, 0.34) 0%, transparent 34%, transparent 68%, rgba(15, 14, 12, 0.42) 100%),
+    linear-gradient(to bottom, transparent 0%, rgba(15, 14, 12, 0.78) 100%);
+}
+
+.se-v2-home-hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.se-v2-continue-card {
+  position: relative;
+  width: min(100%, 540px);
+  display: grid;
+  gap: 8px;
+  overflow: hidden;
+  margin-bottom: 40px;
+  /* 继续卡作视觉主角：基线边框用 accent 描边，比书格的 --se-v2-line 更亮、拉开主次。
+   * 不动 box-shadow（呼吸动画占用，避冲突）。 */
+  border: 1px solid var(--se-v2-accent-border-lg);
+  border-radius: 20px;
+  background: var(--se-v2-panel);
+  color: var(--se-v2-text);
+  padding: 24px;
+  text-align: left;
+  box-shadow: var(--se-v2-shadow-accent);
+  transition: transform .25s ease, border-color .25s ease;
+}
+
+.se-v2-continue-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(200,149,108,.35);
+}
+
+.se-v2-continue-card span,
+.se-v2-recent-section header span {
+  color: var(--se-v2-accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.se-v2-continue-card strong {
+  font-size: 21px;
+}
+
+.se-v2-continue-card small {
+  color: var(--se-v2-muted);
+  font-size: 13px;
+}
+
+.se-v2-continue-card i,
+.se-v2-recent-book i {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--se-v2-line);
+}
+
+.se-v2-continue-card b,
+.se-v2-recent-book b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--se-v2-accent), var(--se-v2-accent-light, #e8a87c));
+  transition: width 0.4s ease;
+}
+
+.se-v2-home-actions {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.se-v2-home-actions button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 168px;
+  border: 1px solid var(--se-v2-line);
+  border-radius: 14px;
+  background: var(--se-v2-card);
+  color: var(--se-v2-text);
+  padding: 14px 22px;
+  transition: transform .2s ease, border-color .2s ease;
+}
+
+.se-v2-home-actions button:hover {
+  transform: translateY(-2px);
+  border-color: rgba(200,149,108,.35);
+}
+
+.se-v2-home-actions span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--se-v2-accent);
+  font-weight: 900;
+}
+
+.se-v2-recent-section {
+  width: min(100%, 840px);
+}
+
+.se-v2-recent-section header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 0 2px;
+}
+
+.se-v2-recent-section header small {
+  color: var(--se-v2-muted);
+}
+
+.se-v2-recent-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.se-v2-recent-empty {
+  display: grid;
+  gap: 6px;
+  min-height: 116px;
+  border: 1px dashed rgba(200, 149, 108, 0.24);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 24px;
+}
+
+.se-v2-recent-empty strong {
+  color: var(--se-v2-text);
+  font-size: 15px;
+}
+
+.se-v2-recent-empty p {
+  margin: 0;
+  color: var(--se-v2-muted);
+  font-size: 13px;
+}
+
+.se-v2-recent-book {
+  position: relative;
+  overflow: visible;
+  border: 1px solid var(--se-v2-line);
+  border-radius: 16px;
+  background: var(--se-v2-panel);
+  transition: transform .25s ease, border-color .25s ease;
+}
+
+.se-v2-recent-book:hover {
+  transform: translateY(-4px);
+  border-color: rgba(200,149,108,.35); /* 与继续卡 hover 统一 */
+}
+
+.se-v2-cover {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 128px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 16px 16px 0 0;
+  background:
+    linear-gradient(to top, #1a1917 0%, transparent 54%),
+    radial-gradient(circle at 60% 18%, rgba(200,149,108,.42), transparent 34%),
+    linear-gradient(135deg, #4a3028, #151412);
+  color: #e8e6e1;
+  padding: 16px;
+  text-align: left;
+  /* 书封 3D 跟手倾斜：JS 写 transform(内含 perspective() 自带 3D)，CSS 给过渡 + 抬起辉光。
+   * 不用 will-change/transform-style:preserve-3d —— 它们会把封面提升成 GPU 合成层，
+   * 在 HiDPI(Retina)headed 浏览器下命中测试边界可能偏移、拦掉下方「···」菜单按钮的点击(V6 回归)。
+   * 倾斜效果靠 transform 值里的 perspective(560px) 即可，无需这两个属性。 */
+  transition: transform 0.12s ease, box-shadow 0.18s ease;
+}
+
+.se-v2-cover:hover {
+  box-shadow:
+    0 16px 38px rgba(0, 0, 0, 0.5),
+    0 0 24px var(--se-v2-accent-border-md);
+}
+
+/* 书封倾斜降低动效收口：系统 reduce + 手动 .is-reduced-motion 双开关都停。 */
+@media (prefers-reduced-motion: reduce) {
+  .se-v2-cover {
+    transform: none !important;
+    transition: none;
+  }
+
+
+}
+.se-v2-home.is-reduced-motion .se-v2-cover {
+  transform: none !important;
+  transition: none;
+}
+
+.se-v2-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── 载入依次浮入：进首页时卡片错峰升起淡入。both 保留终态，避免闪一下。 ── */
+@keyframes se-v2-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.se-v2-continue-card,
+.se-v2-home-actions button,
+.se-v2-recent-book {
+  animation: se-v2-rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.se-v2-home-actions button:nth-child(2) { animation-delay: 0.06s; }
+.se-v2-recent-book:nth-child(2) { animation-delay: 0.10s; }
+.se-v2-recent-book:nth-child(3) { animation-delay: 0.20s; }
+
+/* ── 继续卡呼吸辉光：边缘 box-shadow 缓慢明灭，与 rise 组合(rise 先入场再无限呼吸)。 ── */
+@keyframes se-v2-breathe {
+  0%, 100% { box-shadow: 0 0 0 1px var(--se-v2-accent-border-sm); }
+  50% {
+    box-shadow:
+      0 0 20px var(--se-v2-accent-border-md),
+      0 0 0 1px var(--se-v2-accent-border-lg);
+  }
+}
+.se-v2-continue-card {
+  animation:
+    se-v2-rise 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both,
+    se-v2-breathe 2.8s ease-in-out 0.5s infinite;
+}
+
+/* ── 进度条流光：继续卡进度条 b 上叠一道流光带。
+ *    b::after 仅叠流光、绝不改宽度(宽度由内联 style width:${progress}% 控制)。
+ *    b 加 overflow:hidden 把流光裁在进度条内。 ── */
+@keyframes se-v2-shimmer {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(420%); }
+}
+.se-v2-continue-card b {
+  position: relative;
+  overflow: hidden;
+}
+.se-v2-continue-card b::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+  animation: se-v2-shimmer 2.4s linear infinite;
+}
+
+/* ── 降低动效收口：系统 reduce + 手动 .is-reduced-motion 双开关下，
+ *    浮入/呼吸/流光三组 animation 全停、流光 ::after 隐藏。 ── */
+@media (prefers-reduced-motion: reduce) {
+  .se-v2-continue-card,
+  .se-v2-home-actions button,
+  .se-v2-recent-book {
+    animation: none;
+  }
+  .se-v2-continue-card b::after { display: none; }
+
+
+}
+.se-v2-home.is-reduced-motion :where(.se-v2-continue-card, .se-v2-home-actions button, .se-v2-recent-book) {
+  animation: none;
+}
+.se-v2-home.is-reduced-motion .se-v2-continue-card b::after { display: none; }
+
+.se-v2-recent-info {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  padding: 13px;
+}
+
+.se-v2-recent-info > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  /* recent-info 是 display:grid，这个 flex 容器是它的 grid 项(默认 min-width:auto 不收缩)→
+   * 长标题会把它撑大、连带把「···」按钮挤出卡片。min-width:0 让它能收缩，配合 h3 的 min-width:0 截断。 */
+  min-width: 0;
+}
+
+/* 「···」管理按钮不收缩，始终留在卡内。 */
+.se-v2-recent-info > div > button {
+  flex-shrink: 0;
+}
+
+.se-v2-recent-info h3 {
+  overflow: hidden;
+  /* min-width:0 让 flex 子项可收缩、长标题真正省略号截断；缺它(默认 min-width:auto)长标题不截断、
+   * 会把右侧「···」按钮挤出卡片右边、溢进相邻卡 → 相邻卡 recent-info 盖住它致点击被拦(V6 真因)。 */
+  min-width: 0;
+  margin: 0;
+  color: var(--se-v2-text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.se-v2-recent-info p {
+  margin: 0;
+  color: var(--se-v2-muted);
+  font-size: 12px;
+}
+
+.se-v2-recent-info button {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--se-v2-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 18px;
+  line-height: 1;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.se-v2-recent-info button:hover {
+  background: var(--se-v2-card);
+  color: var(--se-v2-text);
+}
+
+.se-v2-book-menu {
+  position: absolute;
+  z-index: 60;
+  right: 8px;
+  bottom: 44px;
+  display: grid;
+  min-width: 168px;
+  margin: 0;
+  border: 1px solid var(--se-v2-line);
+  border-radius: 12px;
+  background: var(--se-v2-panel);
+  padding: 6px;
+  box-shadow: 0 18px 36px rgba(0,0,0,.34);
+}
+
+.se-v2-book-menu button {
+  width: 100%;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.se-v2-book-menu button:hover {
+  background: var(--se-v2-card);
+  color: var(--se-v2-text);
+}
+
+.se-v2-book-menu button.is-danger {
+  color: #d98b8b;
+}
+
+/* 旧版 RecentBookCard 进度条 */
+.book-progress-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--se-v2-line);
+  margin: 12px 0;
+}
+
+.book-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--se-v2-accent), var(--se-v2-accent-light, #e8a87c));
+  transition: width 0.4s ease;
+}
+
+/* 旧版三个点按钮 v2 覆盖 */
+.book-manage-button {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--se-v2-muted) !important;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease !important;
+}
+
+.book-manage-button:hover {
+  background: var(--se-v2-card) !important;
+  color: var(--se-v2-text) !important;
+}
+
+.se-v2-writing-canvas {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* 查找替换面板（块④）：sticky 停靠正文区右上角，滚动时常驻可见。 */
+.se-v2-find-panel {
+  position: sticky;
+  top: 8px;
+  z-index: 30;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  margin: 8px 12px 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--se-v2-surface, #20232b);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  animation: se-v2-selection-toolbar-in 130ms ease-out;
+}
+
+.se-v2-find-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.se-v2-find-input {
+  width: 180px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: var(--se-v2-bg, rgba(0, 0, 0, 0.2));
+  color: var(--se-v2-text, #e9e9ee);
+  font-size: 13px;
+}
+
+.se-v2-find-count {
+  min-width: 48px;
+  color: var(--se-v2-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.se-v2-find-btn {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--se-v2-text, #e9e9ee);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.se-v2-find-text-btn {
+  padding: 4px 10px;
+  background: var(--se-v2-accent-soft, rgba(200, 149, 108, 0.16));
+}
+
+.se-v2-find-btn:hover:not(:disabled) {
+  background: var(--se-v2-accent-soft, rgba(200, 149, 108, 0.22));
+}
+
+.se-v2-find-btn.is-active {
+  background: var(--se-v2-accent-soft, rgba(200, 149, 108, 0.3));
+}
+
+.se-v2-find-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* 查找高亮（块④ B 修复）：装饰层渲染，不依赖编辑器焦点。所有匹配淡黄、当前匹配橙。 */
+.se-v2-find-match {
+  background: rgba(255, 213, 79, 0.26);
+  border-radius: 2px;
+}
+
+.se-v2-find-match-current {
+  background: rgba(255, 152, 0, 0.62);
+  border-radius: 2px;
+}
+
+/* 「刚改片段」高亮：应用一次改写后，把刚改动的那段标成暗金，像 IDE 看未保存改动一样一眼可见；
+   用户编辑/切章/新改写时撤掉（见 WritingPaper revisionHighlight）。独立于查找高亮、互不覆盖。 */
+.se-v2-revision-highlight {
+  background: rgba(217, 164, 65, 0.30);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.22);
+}
+
+.se-v2-editor-wrap {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 720px;
+  min-width: 0;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 32px 56px;
+}
+
+.se-v2-paper-editable {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: min(720px, calc(100vw - var(--se-v2-sidebar-width) - var(--se-v2-right-width) - 48px));
+  min-width: 0;
+  margin-inline: auto;   /* 居中稿纸 */
+}
+
+.se-v2-editor-text {
+  width: 100%;
+  min-height: 620px;
+  color: var(--se-v2-text);
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', STSong, serif;
+  font-size: var(--se-v2-paper-font-size, 18px);
+  line-height: 1.8;
+  letter-spacing: .02em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 中文长文排版：正式正文段落首行缩进 2 字（中文小说惯例），段距与编辑态一致。 */
+.se-v2-editor-text p {
+  margin: 0 0 1.1em;
+  text-indent: 2em;
+}
+
+.se-v2-paper-title {
+  margin: 0 0 28px;
+  color: var(--se-v2-text);
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', STSong, serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.se-v2-editor-empty {
+  display: grid;
+  place-items: center;
+  min-height: 520px;
+  color: var(--se-v2-muted);
+  text-align: center;
+}
+
+.se-v2-editor-empty h2 {
+  margin: 0 0 8px;
+  color: var(--se-v2-text);
+}
+
+.se-v2-draft-editor {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--se-v2-text);
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', STSong, serif;
+  font-size: var(--se-v2-paper-font-size, 18px);
+  line-height: 1.8;
+  letter-spacing: .02em;
+  white-space: pre-wrap;
+  overflow: auto;
+}
+
+/* Tiptap 编辑器（替代旧 textarea）：复用 .se-v2-draft-editor 的 serif 纸面，补 ProseMirror 专属规则。 */
+.se-v2-draft-editor-host {
+  position: relative;
+  width: 100%;
+  min-height: 560px;
+}
+
+.se-v2-draft-editor.ProseMirror {
+  min-height: 560px;
+  outline: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  /* 打字机底部余量：文末打字时光标下方须留足空白，否则目标 scrollTop 被 maxScroll 夹住、
+     caret 锁不到视口 ~45%（见 sentenceFocus.typewriterScrollTop / WritingPaper.centerCaret）。
+     需 ≥ 视口高 ×(1-0.45)=0.55；取 60vh 留余量。仅可编辑态生效，不污染只读正文。 */
+  padding-bottom: 60vh;
+}
+
+.se-v2-draft-editor.ProseMirror p {
+  margin: 0 0 1.1em;
+  text-indent: 2em;
+}
+
+.se-v2-draft-editor.ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+/* 句级聚焦：聚焦开启时，非当前句淡化；当前句正常亮。打字时启用，编辑/选区时可由 JS 关。 */
+.se-v2-draft-editor.is-focus-mode .se-v2-dim-sentence { opacity: .4; transition: opacity .28s ease; }
+.se-v2-draft-editor .se-v2-dim-sentence { transition: opacity .28s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .se-v2-draft-editor .se-v2-dim-sentence { transition: none; }
+
+
+}
+
+/* 空稿提示：覆盖在编辑器首行处，不拦截点击，聚焦输入即被正文盖过。 */
+.se-v2-draft-editor-hint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0;
+  color: var(--se-v2-muted);
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', STSong, serif;
+  font-size: var(--se-v2-paper-font-size, 18px);
+  line-height: 1.9;
+  pointer-events: none;
+}
+
+/* 选区浮动操作条（块②）：跟随选区出现，淡入+轻微上浮，做出动态跟手手感（非纯静态）。 */
+.se-v2-selection-toolbar {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--se-v2-surface, #20232b);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  animation: se-v2-selection-toolbar-in 130ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-origin: bottom left;
+}
+
+@keyframes se-v2-selection-toolbar-in {
+  from { opacity: 0; transform: translateY(5px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.se-v2-selection-toolbar-btn {
+  padding: 5px 11px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--se-v2-text, #e9e9ee);
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 120ms ease, transform 120ms ease;
+}
+
+.se-v2-selection-toolbar-btn:hover:not(:disabled) {
+  background: var(--se-v2-accent-soft, rgba(200, 149, 108, 0.2));
+  transform: translateY(-1px);
+}
+
+.se-v2-selection-toolbar-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.se-v2-candidates-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.42);
+  animation: se-v2-selection-toolbar-in 140ms ease-out;
+}
+
+.se-v2-candidates-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(1100px, 100%);
+  max-height: 100%;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: var(--se-v2-surface, #20232b);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+}
+
+.se-v2-candidates-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.se-v2-candidates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  overflow: auto;
+}
+
+.se-v2-candidate-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--se-v2-bg, rgba(255, 255, 255, 0.04));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.se-v2-candidate-meta {
+  display: flex;
+  justify-content: space-between;
+  color: var(--se-v2-muted);
+  font-size: 12px;
+}
+
+.se-v2-candidate-body {
+  flex: 1;
+  max-height: 46vh;
+  overflow: auto;
+  color: var(--se-v2-text);
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', STSong, serif;
+  font-size: 15px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.se-v2-candidate-pick {
+  align-self: flex-start;
+}
+
+.se-v2-candidates-foot {
+  margin: 0;
+  color: var(--se-v2-muted);
+  font-size: 12px;
+}
+
+/* ===== 降低动效·总关闭（里程碑2·动效基建收尾） =====
+ * 本里程碑新增的每一处 transition/transform/辉光，都必须能被两条开关关掉：
+ *   ① 系统「prefers-reduced-motion: reduce」  ② 用户手动开的 .se-v2-shell.is-reduced-motion
+ * 媒体块按选择器逐条关本里程碑新增动效（不波及里程碑外既有动画）；
+ * .is-reduced-motion 类块用通配做兜底总闸（用户显式开启，可放心一刀切）。 */
+@media (prefers-reduced-motion: reduce) {
+  /* Task 5：主按钮 hover 升起——停过渡、不升起、不加深阴影 */
+  .se-v2-btn {
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .se-v2-btn.se-v2-btn-primary:not(:disabled):hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+
+}
+
+/* 用户手动开「降低动效」：总闸——所有 transition/animation 一刀切关掉 */
+.se-v2-shell.is-reduced-motion *,
+.se-v2-shell.is-reduced-motion *::after,
+.se-v2-shell.is-reduced-motion *::before {
+  transition: none !important;
+  animation: none !important;
+}
+/* hover 微动的位移/阴影在总闸下也归零（!important 压过 hover 规则） */.se-v2-shell.is-reduced-motion .se-v2-btn.se-v2-btn-primary:not(:disabled):hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ---- 响应式断点 ---- */
+
+/* 平板端（<=1024px）：左侧面板变抽屉式，右侧变窄 */
+@media (max-width: 1024px) {
+  :root .se-v2-shell {
+    --se-v2-right-width: clamp(280px, 28vw, 320px);
+  }
+
+
+}
+
+/* 移动端（<=768px）：三栏变单栏，右侧面板变底部弹出 */
+@media (max-width: 768px) {
+  :root .se-v2-shell {
+    --se-v2-sidebar-width: 40px;
+    --se-v2-right-width: 100vw;
+  }
+
+
+}.se-v2-notice {
+  border: 1px solid var(--se-v2-line);
+  border-radius: 12px;
+  background: var(--se-v2-card);
+  color: var(--se-v2-text);
+}.se-v2-notice {
+  margin-bottom: 10px;
+  padding: 11px 12px;
+}.se-v2-notice p { margin: 0; color: var(--se-v2-text); font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
+
+@keyframes se-v2-timeline-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* 「正在思考」小窗：锚定到输入区上方（由 codex 壳的定位父级承载），
+ * 绝对定位浮在输入区正上方那道空隙里——铁定在底部、固定不动、不占布局、不把输入框顶下去。 */
+.se-v2-thinking-dock {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  bottom: calc(100% + 6px);
+  z-index: 6;
+}
+.se-v2-thinking-dock .se-v2-thinking {
+  margin: 0;
+  padding: 6px 13px 6px 11px;
+  border-radius: 999px; /* 胶囊小药丸 */
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .4);
+}
+/* 紧凑：只留「正在思考」一行，去掉副标题，别太满。 */
+.se-v2-thinking-dock .se-v2-thinking-copy strong { font-size: 12.5px; }
+.se-v2-thinking-dock .se-v2-thinking-sub { display: none; }
+
+/* ── 会动的「思考中」指示（替代静态灰框）──────────────────────────────
+ * 三颗错峰跳动的金点 + 一道流光扫过 + 边框呼吸辉光。纯 CSS 动画、无动画库。
+ * 降低动效总闸 .se-v2-shell.is-reduced-motion *（animation:none !important）会自动把
+ * 下面所有动画关掉，退化成静态金点 + 文案，无需在此另写 reduce-motion 兜底。 */
+.se-v2-thinking {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--se-v2-accent-border-md);
+  background: color-mix(in srgb, var(--se-v2-accent) 6%, var(--se-v2-surface, #1a1614));
+  animation: se-v2-thinking-glow 2.6s ease-in-out infinite;
+}
+/* 流光：一道暖金高光斜扫过整条 */
+.se-v2-thinking::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    color-mix(in srgb, var(--se-v2-warning) 24%, transparent) 50%,
+    transparent 70%
+  );
+  transform: translateX(-130%);
+  animation: se-v2-thinking-sweep 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.se-v2-thinking-dots {
+  flex: none;
+  display: inline-flex;
+  gap: 5px;
+  position: relative;
+  z-index: 1;
+}
+.se-v2-thinking-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--se-v2-warning);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--se-v2-warning) 50%, transparent);
+  animation: se-v2-thinking-bounce 1.2s ease-in-out infinite;
+}
+.se-v2-thinking-dots i:nth-child(2) { animation-delay: 0.16s; }
+.se-v2-thinking-dots i:nth-child(3) { animation-delay: 0.32s; }
+.se-v2-thinking-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.se-v2-thinking-copy strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--se-v2-text);
+}
+.se-v2-thinking-sub {
+  font-size: 12px;
+  color: var(--se-v2-muted);
+}
+@keyframes se-v2-thinking-bounce {
+  0%, 80%, 100% { transform: translateY(0) scale(0.82); opacity: 0.45; }
+  40% { transform: translateY(-4px) scale(1.12); opacity: 1; }
+}
+@keyframes se-v2-thinking-sweep {
+  0% { transform: translateX(-130%); }
+  55%, 100% { transform: translateX(130%); }
+}
+@keyframes se-v2-thinking-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(217, 164, 65, 0);
+    border-color: var(--se-v2-accent-border-md);
+  }
+  50% {
+    box-shadow: 0 0 16px 0 rgba(217, 164, 65, 0.18);
+    border-color: var(--se-v2-accent-border-lg);
+  }
+}
+
+.home-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 4, 3, 0.72);
+  padding: 24px;
+}
+
+.home-dialog {
+  width: min(620px, calc(100vw - 32px));
+  max-height: min(720px, calc(100vh - 32px));
+  overflow-y: auto;
+  border: 1px solid rgba(200, 149, 108, 0.22);
+  border-radius: 16px;
+  background: var(--se-v2-panel);
+  color: var(--se-v2-text);
+  box-shadow: 0 30px 110px rgba(0,0,0,.55);
+  padding: 22px;
+}
+
+.home-dialog header,
+.home-dialog footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.home-dialog footer {
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.home-dialog h2 {
+  margin: 0 0 8px;
+  color: var(--se-v2-text);
+  font-size: 18px;
+}
+
+.home-dialog p {
+  margin: 0;
+  color: var(--se-v2-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.home-dialog header > button {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--se-v2-line);
+  border-radius: 9px;
+  background: rgba(255,255,255,.035);
+  color: var(--se-v2-muted);
+}
+
+.home-dialog footer button {
+  min-height: 36px;
+  border: 1px solid var(--se-v2-line);
+  border-radius: 9px;
+  background: rgba(255,255,255,.035);
+  color: var(--se-v2-text);
+  padding: 8px 13px;
+  font-weight: 800;
+}
+
+.home-dialog footer .secondary {
+  color: var(--se-v2-muted);
+}
+
+.se-v2-modal-backdrop {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(7, 7, 6, .68);
+  backdrop-filter: blur(6px);
+  padding: 24px;
+}
+
+.se-v2-commit-modal {
+  width: min(620px, 100%);
+  border: 1px solid rgba(200,149,108,.28);
+  border-radius: 18px;
+  background: #1f1d1a;
+  color: var(--se-v2-text);
+  box-shadow: 0 24px 80px rgba(0,0,0,.55);
+  overflow: hidden;
+}
+
+.se-v2-commit-modal > header {
+  display: grid;
+  gap: 8px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid var(--se-v2-line-weak);
+}
+
+.se-v2-commit-modal > header span {
+  color: var(--se-v2-accent);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.se-v2-commit-modal h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.se-v2-commit-modal p {
+  margin: 0;
+  color: var(--se-v2-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.se-v2-commit-modal footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px 22px;
+  border-top: 1px solid var(--se-v2-line-weak);
+}
+
+.se-v2-commit-modal footer button {
+  min-width: 96px;
+  border: 1px solid var(--se-v2-line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--se-v2-text);
+  padding: 10px 14px;
+  font-weight: 900;
+}
+
+/* ------------------------------------------------------------------ */
+/*  shadcn Dialog theme overrides                                      */
+/* ------------------------------------------------------------------ */
+
+/* shadcn/Radix Dialog 暗金化：本项目 Tailwind 工具类未生成（index.css 用 @import "tailwindcss"
+ * 但未挂 Tailwind v4 Vite 插件 —— build 后 .fixed/.bg-card/.z-50 等 0 命中），
+ * 故 Radix 弹窗的定位/面板/遮罩/页脚全靠这里的显式样式接管。
+ * 共用此三件套的弹窗：新建书籍(NewBookStarter)/重命名/删除。 */
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(5, 4, 3, 0.72);
+}
+
+.dialog-content {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 91;
+  display: grid;
+  gap: 14px;
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(80vh, calc(100vh - 48px));
+  overflow-y: auto;
+  border: 1px solid var(--se-v2-line);
+  border-radius: 16px;
+  background: var(--se-v2-panel);
+  color: var(--se-v2-text);
+  box-shadow: 0 30px 110px rgba(0, 0, 0, 0.55);
+  padding: 22px;
+}
+
+.dialog-header {
+  display: grid;
+  gap: 6px;
+}
+
+.dialog-title {
+  margin: 0;
+  color: var(--se-v2-text);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.dialog-desc {
+  margin: 0;
+  color: var(--se-v2-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.dialog-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--se-v2-line);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--se-v2-muted);
+  cursor: pointer;
+}
+
+.dialog-close:hover {
+  background: var(--se-v2-hover);
+  color: var(--se-v2-text);
+}
+
+/* sr-only 同样未由 Tailwind 生成 —— 给弹窗内可视化隐藏文案(如 Close)做无障碍隐藏。 */
+.dialog-content .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.se-v2-rename-input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--se-v2-line);
+  border-radius: 10px;
+  background: var(--se-v2-card);
+  color: var(--se-v2-text);
+  padding: 10px 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.se-v2-rename-input:focus {
+  border-color: var(--se-v2-accent);
+}
+
+.se-v2-dialog-cancel-btn,
+.se-v2-dialog-confirm-btn {
+  min-width: 80px;
+  min-height: 36px;
+  border: 1px solid var(--se-v2-line);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.se-v2-dialog-cancel-btn {
+  background: transparent;
+  color: var(--se-v2-muted);
+}
+
+.se-v2-dialog-cancel-btn:hover {
+  background: var(--se-v2-hover);
+  color: var(--se-v2-text);
+}
+
+.se-v2-dialog-confirm-btn {
+  background: var(--se-v2-accent);
+  color: var(--se-v2-bg);
+  border-color: transparent;
+}
+
+.se-v2-dialog-confirm-btn:hover {
+  background: rgba(200, 149, 108, 0.85);
+}
+
+.se-v2-dialog-confirm-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 删除确认按钮（危险）+ 路径/提示——复用暗金 danger token，对齐重命名弹窗 footer。 */
+.se-v2-dialog-danger-btn {
+  min-width: 80px;
+  min-height: 36px;
+  border: 1px solid var(--se-v2-danger-border-sm);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  background: rgba(184, 107, 107, 0.16);
+  color: var(--se-v2-danger);
+}
+
+.se-v2-dialog-danger-btn:hover {
+  background: rgba(184, 107, 107, 0.26);
+}
+
+.se-v2-delete-path {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  border: 1px solid var(--se-v2-line);
+  border-radius: 10px;
+  background: var(--se-v2-card);
+  padding: 10px 12px;
+}
+
+.se-v2-delete-path dt {
+  color: var(--se-v2-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.se-v2-delete-path dd {
+  margin: 0;
+  color: var(--se-v2-text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.se-v2-delete-hint {
+  margin: 0;
+  color: var(--se-v2-warning);
+  font-size: 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  NewBookStarter — 极简新建入口（只问书名）                          */
+/* ------------------------------------------------------------------ */
+.se-v2-new-book-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--se-v2-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Toast (app-level)                                                  */
+/* ------------------------------------------------------------------ */
+
+.app-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  border: 1px solid var(--se-v2-line);
+  border-radius: 12px;
+  background: var(--se-v2-card);
+  color: var(--se-v2-text);
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 8px 32px rgba(0,0,0,.42);
+  animation: toast-in 0.25s ease-out;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes dot-pulse {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1.1); }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Enhanced visual hierarchy                                          */
+/* ------------------------------------------------------------------ */
+
+.se-v2-card {
+  border: 1px solid var(--se-v2-line);
+  border-radius: 12px;
+  background: var(--se-v2-card);
+  color: var(--se-v2-text);
+}.se-v2-notice {
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.15s ease;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Responsive                                                         */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 1320px) {
+  .se-v2-shell {
+    --se-v2-sidebar-width: 176px;
+    --se-v2-right-width: clamp(320px, 30vw, 360px);
+  }
+  .se-v2-editor-wrap { padding-left: 32px; padding-right: 32px; }
+
+
+}
+
+@media (max-width: 1080px) {
+  .se-v2-shell {
+    --se-v2-sidebar-width: 56px;
+    --se-v2-right-width: clamp(300px, 34vw, 340px);
+  }
+  .se-v2-paper-editable {
+    max-width: min(720px, calc(100vw - 56px - clamp(300px, 34vw, 340px) - 48px));
+  }
+
+
+}
+
+@media (max-width: 768px) {
+  .se-v2-shell {
+    --se-v2-sidebar-width: 48px;
+    --se-v2-right-width: min(88vw, 340px);
+  }
+  .se-v2-paper-editable {
+    max-width: calc(100vw - 48px - 32px);
+  }
+  .se-v2-editor-wrap {
+    padding: 22px 16px;
+  }
+  .se-v2-home-main {
+    justify-content: flex-start;
+    padding: 0 18px 40px;
+  }
+  .se-v2-home-hero {
+    height: 168px;
+    margin-bottom: 24px;
+  }
+  .se-v2-home-actions,
+  .se-v2-recent-grid {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+  .se-v2-home-actions {
+    display: grid;
+  }
+
+
+}
+@keyframes se-v2-popcard-in {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

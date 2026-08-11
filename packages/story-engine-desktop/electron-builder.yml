@@ -1,0 +1,41 @@
+# electron-builder 配置（桌面 MVP 任务③）。
+# 打包对象是 pnpm deploy 产出的扁平 staging 目录（--projectDir 传入），不是本工作区
+# （工作区 node_modules 是 pnpm 软链 + 带 devDeps + 带 darwin 专属二进制，直接打必坏）。
+# 产 staging：pnpm --filter story-engine-desktop deploy --legacy --prod --config.node-linker=hoisted <dir>
+appId: com.storyengine.desktop
+productName: StoryEngine
+# staging 里没有 electron devDep，版本在这里钉死（与工作区 devDep 保持一致）。
+electronVersion: 43.0.0
+
+# MVP 选 asar:false：ESM(main.mjs) + 全外置 node_modules 场景下最稳（研究标的最高风险点就是
+# asar 内 Mastra 的 ESM 解析）。代价是文件数多、首次安装略慢——内测可接受，瘦身押后。
+asar: false
+
+files:
+  - "**/*"
+  # 默认配置是无密钥包；预置模式由 build-desktop.sh 生成一次性配置显式移除此排除项。
+  - "!preset-model-config/**"
+
+directories:
+  output: dist-electron
+
+mac:
+  target:
+    - target: dmg
+      arch: [arm64]
+  category: public.app-category.productivity
+  # 内测版不签名（熟人右键打开）；上签名时删掉这行并配 hardenedRuntime + notarize。
+  identity: null
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+# staging 已是纯 JS 生产依赖（实测 0 个 .node），不需要任何重建。
+npmRebuild: false
+nodeGypRebuild: false

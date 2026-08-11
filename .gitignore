@@ -1,0 +1,31 @@
+node_modules/
+dist/
+dist-electron/
+dist-server/
+build/
+coverage/
+.turbo/
+.cache/
+tmp/
+.logs/
+output/
+artifacts/
+reports/*.zip
+reports/*.json
+!reports/story-engine-prompt-cache-metrics-v1.json
+!reports/story-engine-deepseek-cache-metadata-probe-v1.json
+!reports/story-engine-prompt-cache-reorder-v1.json
+!reports/story-engine-prompt-cache-reorder-v1-deepseek-validation.json
+!reports/story-engine-prompt-cache-regression-guard-v1.json
+!reports/story-engine-state-overview-pack-v0.json
+!reports/story-engine-chapter-steering-pack-v0.json
+reports/content-samples/
+.env
+.env.*
+*.log
+.DS_Store
+.pnpm-store/
+.superpowers/
+# playwright-cli 走查产物（快照/控制台日志），不入库
+
+# 开源门面：内部开发文档/诊断脚本不入库
