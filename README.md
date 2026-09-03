@@ -3,7 +3,7 @@
 <img src=".github/assets/hero.svg" alt="StoryEngine — chat-driven AI long-form novel writing engine / 聊天驱动写长篇小说" width="760" />
 
 <p>
-  <a href="https://github.com/3209621-dotcom/StoryEngine/actions/workflows/ci.yml"><img src="https://github.com/3209621-dotcom/StoryEngine/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/OrderG-X/StoryEngine/actions/workflows/ci.yml"><img src="https://github.com/OrderG-X/StoryEngine/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <img src="https://img.shields.io/badge/license-AGPL--3.0-8b5cf6" alt="License: AGPL-3.0" />
   <img src="https://img.shields.io/badge/node-%E2%89%A5%2020-43853d?logo=node.js&logoColor=white" alt="Node >= 20" />
   <img src="https://img.shields.io/badge/pnpm-11-f69220?logo=pnpm&logoColor=white" alt="pnpm 11" />
@@ -19,7 +19,7 @@
 
 ---
 
-> 🚧 **持续更新中**：项目仍在快速迭代，功能会不断完善。使用中遇到任何问题、或想要新功能，欢迎到 [Issues](https://github.com/3209621-dotcom/StoryEngine/issues) 提过来，我们会认真看。
+> 🚧 **持续更新中**：项目仍在快速迭代，功能会不断完善。使用中遇到任何问题、或想要新功能，欢迎到 [Issues](https://github.com/OrderG-X/StoryEngine/issues) 提过来，我们会认真看。
 
 **聊天驱动写长篇小说。你对 AI 说话，AI 调工具读/写故事状态、生成草稿、审稿入库——所有状态变更都经过引擎的确定性校验，每步可预览、可撤销。**
 

@@ -3,7 +3,7 @@
 <img src=".github/assets/hero.svg" alt="StoryEngine — chat-driven long-form novel writing" width="760" />
 
 <p>
-  <a href="https://github.com/3209621-dotcom/StoryEngine/actions/workflows/ci.yml"><img src="https://github.com/3209621-dotcom/StoryEngine/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/OrderG-X/StoryEngine/actions/workflows/ci.yml"><img src="https://github.com/OrderG-X/StoryEngine/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <img src="https://img.shields.io/badge/license-AGPL--3.0-8b5cf6" alt="License: AGPL-3.0" />
   <img src="https://img.shields.io/badge/node-%E2%89%A5%2020-43853d?logo=node.js&logoColor=white" alt="Node >= 20" />
   <img src="https://img.shields.io/badge/pnpm-11-f69220?logo=pnpm&logoColor=white" alt="pnpm 11" />
@@ -21,7 +21,7 @@
 
 # StoryEngine
 
-> 🚧 **Under active development**: the project is iterating quickly. Found a problem or want a feature? Open an [issue](https://github.com/3209621-dotcom/StoryEngine/issues) and we will take it seriously.
+> 🚧 **Under active development**: the project is iterating quickly. Found a problem or want a feature? Open an [issue](https://github.com/OrderG-X/StoryEngine/issues) and we will take it seriously.
 
 **Chat-driven long-form fiction writing. You talk to the AI; the AI calls tools to read/write story state, generate drafts, and review before committing — every state change goes through deterministic engine checks, previewable and reversible at each step.**
 
