@@ -229,6 +229,19 @@ describe("思考透传（非流式路）：按 configured.thinkingDialect 翻成
     expect((await bodyOf(fakeConfigured(false))).thinking).toEqual({ type: "disabled" });
   });
 
+  it("调用选项上不存在 maxTokens 字段（死参数陷阱已拔除：传了必须编译失败）", () => {
+    const configured = fakeConfigured(false);
+    // 该字段已从调用选项类型中删除（多余属性字面量检查会拦住）；若未来有人加回来，
+    // 这里会因「多余 @ts-expect-error」编译失败拦住。纯类型级断言，不发真实请求。
+    const attempted: Parameters<typeof callOpenAICompatibleChatModel>[0] = {
+      configured,
+      messages: [{ role: "user", content: "x" }],
+      // @ts-expect-error — max_tokens 铁律：调用选项一律不得传 maxTokens（推理模型思考吃额度会截空正文）。
+      maxTokens: 1024,
+    };
+    expect(attempted.configured).toBe(configured);
+  });
+
   it("glm 方言 + thinking=true → body.thinking.type === 'enabled'", async () => {
     expect((await bodyOf(fakeConfigured(true))).thinking).toEqual({ type: "enabled" });
   });

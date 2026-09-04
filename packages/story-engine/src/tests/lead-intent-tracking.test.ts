@@ -6,9 +6,10 @@ import { commitFastDraft } from "../commit-engine.js";
 import { buildCommitPlanFromProject } from "../commit-plan-builder.js";
 import { checkDraftContinuity } from "../continuity-quality-check.js";
 import { buildWriterContext, type StoryThreadsContext } from "../context-gateway.js";
+import { mergeThreadTrackingUpdates } from "../lead-intent-tracking.js";
 import { createStoryProject, readHookPool, readThreadPool } from "../project-store.js";
 import type { ChapterDeltaDeclaration } from "../chapter-delta.js";
-import type { ThreadPool } from "../types.js";
+import type { NarrativeThread, ThreadPool } from "../types.js";
 
 describe("StoryEngine-NG Lead / Intent Tracking", () => {
   it("extracts nextLead as lead and decision as intent without polluting HookPool", async () => {
@@ -294,10 +295,16 @@ describe("StoryEngine-NG Lead / Intent Tracking", () => {
 
     const plan = await buildCommitPlanFromProject({ projectDir, chapter: 3 });
 
+    // 2026-09-04 题材中立修复：持久层坍缩摘除了「库房+账→库房查账」「后墙.*响动→后墙异常响动」
+    // 等题材专名别名（老测试书残留，会跨题材熔掉不同语义的真线索，如「库房丢账/库房对账」）。
+    // 归并只走 B2-2 安全判据（归一后相同/子串包含 + bigram≥0.6 仅限活跃态）：
+    //   - 去库房查账 ↔ 明日去库房查账册：归一后子串包含 → 仍归并（mergedCount 1）
+    //   - 后墙异常响动 ↔ 调查后墙响动：Jaccard≈0.33 < 0.6，按 legacy-thread-cleanup 设计
+    //     「保守阈值，绝不过并」留在持久层，折叠由展示层聚类（非破坏、可展开）处理。
     expect(plan.threadHygieneReport).toMatchObject({
       beforeCount: 4,
-      afterCount: 2,
-      mergedCount: 2,
+      afterCount: 3,
+      mergedCount: 1,
       markedDoneCount: expect.any(Number),
     });
     const report = await commitFastDraft({
@@ -309,11 +316,11 @@ describe("StoryEngine-NG Lead / Intent Tracking", () => {
     expect(report.passed).toBe(true);
     expect(report.threadTracking?.threadHygieneReport).toMatchObject({
       beforeCount: 4,
-      afterCount: 2,
-      mergedCount: 2,
+      afterCount: 3,
+      mergedCount: 1,
     });
     const threadPool = await readThreadPool(projectDir);
-    expect(threadPool.threads).toHaveLength(2);
+    expect(threadPool.threads).toHaveLength(3);
     expect(threadPool.threads).toEqual(expect.arrayContaining([
       expect.objectContaining({
         type: "intent",
@@ -329,7 +336,12 @@ describe("StoryEngine-NG Lead / Intent Tracking", () => {
         title: "后墙异常响动",
         status: "done",
         lastTouchedChapter: 3,
-        relatedLocations: expect.arrayContaining(["账房", "后墙"]),
+        relatedLocations: expect.arrayContaining(["账房"]),
+      }),
+      expect.objectContaining({
+        type: "lead",
+        title: "调查后墙响动",
+        status: "open",
       }),
     ]));
     for (const thread of threadPool.threads) {
@@ -1003,3 +1015,49 @@ function threadContextItem(
     relatedLocations: ["账房"],
   };
 }
+
+describe("题材中立·线索池持久层不得因题材专名词表破坏性熔合", () => {
+  const makeLead = (id: string, title: string): NarrativeThread => ({
+    id,
+    type: "lead",
+    title,
+    status: "open",
+    firstSeenChapter: 3,
+    lastTouchedChapter: 12,
+    evidence: [`第3章：${title}。`, `第12章：${title}后续。`],
+  });
+
+  it("商战反例：库房丢账/库房对账是两条真线索，零 update 时绝不被熔成一条", () => {
+    const pool: ThreadPool = {
+      threads: [makeLead("lead-lose", "库房丢账"), makeLead("lead-check", "库房对账")],
+    };
+    const merged = mergeThreadTrackingUpdates(pool, []);
+    expect(merged.threads.map((thread) => thread.title)).toEqual(["库房丢账", "库房对账"]);
+  });
+
+  it("商战反例：库房亏空/库房对账/库房查账三条各归各，不坍缩进「库房查账」", () => {
+    const pool: ThreadPool = {
+      threads: [
+        makeLead("lead-a", "库房亏空"),
+        makeLead("lead-b", "库房对账"),
+        makeLead("lead-c", "库房查账"),
+      ],
+    };
+    const merged = mergeThreadTrackingUpdates(pool, []);
+    expect(merged.threads).toHaveLength(3);
+  });
+
+  it("安全正例保留：去库房查账 ↔ 明日去库房查账册 仍按子串包含归并（短标题胜出）", () => {
+    const pool: ThreadPool = {
+      threads: [
+        makeLead("lead-short", "去库房查账"),
+        { ...makeLead("lead-long", "明日去库房查账册"), lastTouchedChapter: 14 },
+      ],
+    };
+    const merged = mergeThreadTrackingUpdates(pool, []);
+    expect(merged.threads).toHaveLength(1);
+    expect(merged.threads[0]?.title).toBe("去库房查账");
+    expect(merged.threads[0]?.lastTouchedChapter).toBe(14);
+    expect(merged.threads[0]?.evidence).toHaveLength(4);
+  });
+});

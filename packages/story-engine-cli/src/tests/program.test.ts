@@ -240,12 +240,12 @@ describe("story-engine draft CLI", () => {
     const before = await snapshotGovernedFiles(projectDir);
     const fetchMock = vi.fn<FetchLike>(async (url, init) => {
       expect(url).toBe("https://api.deepseek.com/v1/chat/completions");
-      const authHeaderName = ["author", "ization"].join("");
-      const authScheme = ["Bea", "rer"].join("");
-      expect(init.headers[authHeaderName]).toBe(`${authScheme} fake-test-key`);
-      const body = JSON.parse(init.body) as { model: string; messages: Array<{ content: string }>; max_tokens: number };
+      expect(init.headers["Authorization"]).toBe("Bearer fake-test-key");
+      const body = JSON.parse(init.body) as { model: string; messages: Array<{ content: string }>; max_tokens?: number };
       expect(body.model).toBe("deepseek-v4-flash");
-      expect(body.max_tokens).toBe(1754);
+      // max_tokens 铁律：推理模型的 reasoning_content 也吃 max_tokens 额度，光思考 6~9k
+      // 就能把正文截空。任何调用路径一律不传，让模型用自身上限自然收尾。
+      expect(body.max_tokens).toBeUndefined();
       expect(body.messages[0]?.content).toContain("Write only the chapter body.");
       expect(body.messages[0]?.content).toContain("项目写作规则要求约 1800 字");
       expect(body.messages[0]?.content).not.toContain("legacy");

@@ -60,6 +60,41 @@ type AiChatCodexProps = WritingWorkspaceLayoutProps & {
   readonly onResizeStart?: (event: ReactPointerEvent) => void;
 };
 
+/**
+ * 折叠态竖条。展开 handler 只挂在 aside 上：button 不自带 onClick，点击经冒泡触发一次。
+ * （此前 aside+button 双 handler 各自取反，一次点击展开两次=净零，「点按钮等于没点」。）
+ */
+export function CollapsedAiRail({ onToggleRight }: { readonly onToggleRight: () => void }) {
+  return (
+    <aside
+      className="ai"
+      style={{ width: 44, minWidth: 44, alignItems: "center", padding: "16px 0", cursor: "pointer" }}
+      onClick={onToggleRight}
+      title="展开 AI 写作助手"
+    >
+      <button
+        type="button"
+        title="展开 AI 写作助手"
+        style={{
+          display: "grid",
+          placeItems: "center",
+          gap: 8,
+          border: 0,
+          background: "transparent",
+          color: "var(--accent-hi)",
+          cursor: "pointer",
+          writingMode: "vertical-rl",
+          letterSpacing: ".2em",
+          fontSize: 12,
+        }}
+      >
+        <span style={{ fontSize: 16 }} aria-hidden="true">✦</span>
+        <span>AI 助手</span>
+      </button>
+    </aside>
+  );
+}
+
 export default function AiChatCodex(props: AiChatCodexProps) {
   // 归档折叠行展开态。
   const [archivedExpanded, setArchivedExpanded] = useState(false);
@@ -98,35 +133,7 @@ export default function AiChatCodex(props: AiChatCodexProps) {
 
   // 折叠态：整列只渲染一个极简竖条（点击展开）。codex.css 没有专用 class，用最小内联（codex 变量调色）。
   if (!props.rightOpen) {
-    return (
-      <aside
-        className="ai"
-        style={{ width: 44, minWidth: 44, alignItems: "center", padding: "16px 0", cursor: "pointer" }}
-        onClick={props.onToggleRight}
-        title="展开 AI 写作助手"
-      >
-        <button
-          type="button"
-          onClick={props.onToggleRight}
-          title="展开 AI 写作助手"
-          style={{
-            display: "grid",
-            placeItems: "center",
-            gap: 8,
-            border: 0,
-            background: "transparent",
-            color: "var(--accent-hi)",
-            cursor: "pointer",
-            writingMode: "vertical-rl",
-            letterSpacing: ".2em",
-            fontSize: 12,
-          }}
-        >
-          <span style={{ fontSize: 16 }} aria-hidden="true">✦</span>
-          <span>AI 助手</span>
-        </button>
-      </aside>
-    );
+    return <CollapsedAiRail onToggleRight={props.onToggleRight} />;
   }
 
   const { flowStatus } = props.workspace;

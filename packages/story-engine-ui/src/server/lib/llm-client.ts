@@ -238,7 +238,6 @@ export async function callOpenAICompatibleChatModel(input: {
   readonly configured: ResolvedChatModel;
   readonly messages: readonly { readonly role: string; readonly content: string }[];
   readonly temperature?: number;
-  readonly maxTokens?: number;
   readonly responseFormat?: { readonly type: "json_object" };
   readonly stream?: boolean;
   readonly timeoutMs?: number;
@@ -250,7 +249,7 @@ export async function callOpenAICompatibleChatModel(input: {
   // 推理模型的思考(reasoning_content)也算进 max_tokens，实测光思考就要 6~9k token；任何小上限都会把思考
   // 还没写完就截断、正文 content 一个字没出（真机：世界观/做厚/正文都中招）。实测本网关不传＝用模型上限
   // （区间上限 393216、长输出 finish=stop 不截）；传 0 反被 DeepSeek 拒（"valid range [1,393216]"）。
-  // 故忽略调用方传入的 maxTokens（那些小值正是病根）；输出长度由提示词约束、模型自然收尾。思考全程保留。
+  // 故调用选项上根本没有 maxTokens 字段（传了直接编译失败）；输出长度由提示词约束、模型自然收尾。思考全程保留。
   try {
     const response = await fetch(`${input.configured.provider.baseUrl.replace(/\/+$/u, "")}/chat/completions`, {
       method: "POST",

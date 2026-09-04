@@ -668,10 +668,10 @@ function collectStaleBacklog(
 const DEDUP_SIMILARITY_THRESHOLD = 0.6;
 
 function findSimilarThread(threads: readonly NarrativeThread[], candidate: ThreadCandidate): NarrativeThread | undefined {
-  const normalizedTitle = canonicalThreadTitle(candidate.type, candidate.title);
+  const normalizedTitle = canonicalThreadTitle(candidate.title);
   return threads.find((thread) => {
     if (thread.type !== candidate.type) return false;
-    const values = [thread.title, ...(thread.evidence ?? [])].map((value) => canonicalThreadTitle(thread.type, value));
+    const values = [thread.title, ...(thread.evidence ?? [])].map((value) => canonicalThreadTitle(value));
     const isActiveThread = thread.status === "open" || thread.status === "touched";
     // B2-2: bigram 近似归并只对 open/touched 线索生效（done/stale 不参与模糊归并）；
     //        完全相同 / 子串包含对所有状态继续生效（保持 "done 再提到仍 touch" 原有行为）
@@ -784,13 +784,28 @@ function titlesOverlapWithStatus(left: string, right: string, allowBigram: boole
 }
 
 function compactThreadPool(pool: ThreadPool): ThreadPool {
-  const groups = new Map<string, NarrativeThread>();
+  // 持久层坍缩与 B2-2 去重共用同一套保守安全判据（归一后相同/子串包含；
+  // bigram≥0.6 仅对 open/touched 生效）——绝不做题材专名词表驱动的破坏性熔合：
+  // 「库房丢账/库房对账」是两条真线索，短标题别名折叠（响动类）归展示层聚类（非破坏、可展开）。
+  const groups: NarrativeThread[] = [];
   for (const thread of pool.threads) {
-    const key = `${thread.type}:${canonicalThreadTitle(thread.type, thread.title)}`;
-    const existing = groups.get(key);
-    groups.set(key, existing ? mergeSimilarThreads(existing, thread) : thread);
+    const active = thread.status === "open" || thread.status === "touched";
+    const canonical = canonicalThreadTitle(thread.title);
+    const matchIndex = groups.findIndex((existing) => {
+      if (existing.type !== thread.type) return false;
+      return titlesOverlapWithStatus(
+        canonicalThreadTitle(existing.title),
+        canonical,
+        active,
+      );
+    });
+    if (matchIndex === -1) {
+      groups.push(thread);
+    } else {
+      groups[matchIndex] = mergeSimilarThreads(groups[matchIndex], thread);
+    }
   }
-  return { threads: [...groups.values()] };
+  return { threads: groups };
 }
 
 function mergeSimilarThreads(left: NarrativeThread, right: NarrativeThread): NarrativeThread {
@@ -839,20 +854,14 @@ function buildThreadHygieneReport(input: {
   };
 }
 
-function canonicalThreadTitle(type: NarrativeThread["type"], value: string): string {
-  const normalized = normalize(value)
+function canonicalThreadTitle(value: string): string {
+  // 仅做题材中立归一：去主角代词/意图动词/时间词/体貌助词/泛词。绝不放题材专名别名
+  // （账册/后墙/库房查账等）——那是老测试书残留，会把不同语义的真线索坍缩成一条。
+  return normalize(value)
     .replace(/主角|他|她/gu, "")
     .replace(/重新|决定|准备|打算|必须|要去|先去|明日去|明日|夜探|前往|寻找|调查|查清|问清楚|继续|处理/gu, "")
-    .replace(/账册/gu, "账")
-    .replace(/账本/gu, "账")
-    .replace(/后墙.*响动/gu, "后墙异常响动")
-    .replace(/异常响动/gu, "响动")
-    .replace(/来源|线索/gu, "");
-  if (type === "lead" && normalized.includes("后墙") && normalized.includes("响动")) return "后墙响动";
-  if (normalized.includes("库房") && normalized.includes("查账")) return "库房查账";
-  if (normalized.includes("库房") && normalized.includes("账")) return "库房查账";
-  if (normalized.includes("账房") && normalized.includes("夜探")) return "账房夜探";
-  return normalized;
+    .replace(/已经|完成|过/gu, "")
+    .replace(/来源|线索|的/gu, "");
 }
 
 function threadIdFromTitle(type: NarrativeThread["type"], title: string): string {

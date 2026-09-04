@@ -1084,7 +1084,7 @@ export function createOpenAICompatibleWriterClient(input: {
   readonly fetch: FetchLike;
 }): WriterClient {
   return {
-    async generateDraft({ context, maxOutputTokens }) {
+    async generateDraft({ context }) {
       const apiKey = input.env.STORY_ENGINE_LLM_API_KEY;
       if (!apiKey) {
         throw new Error("Missing STORY_ENGINE_LLM_API_KEY.");
@@ -1094,12 +1094,10 @@ export function createOpenAICompatibleWriterClient(input: {
         throw new Error("Missing STORY_ENGINE_LLM_BASE_URL.");
       }
       const prompt = renderFastDraftPrompt(context);
-      const authHeaderName = ["author", "ization"].join("");
-      const authScheme = ["Bea", "rer"].join("");
       const response = await input.fetch(completionEndpoint(baseUrl), {
         method: "POST",
         headers: {
-          [authHeaderName]: `${authScheme} ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
           "content-type": "application/json",
         },
         body: JSON.stringify({
@@ -1111,7 +1109,8 @@ export function createOpenAICompatibleWriterClient(input: {
             },
           ],
           temperature: 0.8,
-          max_tokens: maxOutputTokens,
+          // 不传 max_tokens：推理模型的 reasoning_content 也吃 max_tokens 额度，光思考就要 6~9k，
+          // 小上限会把正文截空。让模型用自身上限自然收尾（与 UI 侧 llm-client 同一铁律）。
         }),
       });
       const raw = await response.text();
